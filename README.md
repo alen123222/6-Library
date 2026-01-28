@@ -1,7 +1,8 @@
 # 📚 6的Library
 百分之九十五的代码来自ai，此处鸣谢clauld gpt gemini。本人只做了简单修改和调试以及鞭打ai等工作。此README同样出自ai之手。
 注意，本app是一个纯本地资源的阅读工具，不具备任何联网功能，目前也没有书源/漫画源/音源接口。也许以后会做也许不会。附几张运行截图：
-<img width="1080" height="2340" alt="4526864857386dcda65daf9ba6f984d" src="https://github.com/user-attachments/assets/1f553a16-03cc-45bf-a982-1c5f98538b3a" />
+![pintu-fulicat com-1769565267961](https://github.com/user-attachments/assets/be5bc410-fa68-4013-b98d-c4a71f3a3e88)
+
 
 
 > **一个现代化、高颜值的 Android 漫画/小说/音频阅读器**
