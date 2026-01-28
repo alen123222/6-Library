@@ -1,14 +1,15 @@
 # 📚 6的Library
-百分之九十五的代码来自ai，此处鸣谢clauld gpt gemini。本人只做了简单修改和调试以及鞭打ai等工作。此README同样出自ai之手。
+百分之九十五的代码来自ai，此处鸣谢clauld gpt gemini。本人只做了简单修改和调试以及鞭打ai等工作。此README的百分之八十同样出自ai之手。
 注意，本app是一个纯本地资源的阅读工具，不具备任何联网功能，目前也没有书源/漫画源/音源接口。也许以后会做也许不会。附几张运行截图：
 ![pintu-fulicat com-1769565267961](https://github.com/user-attachments/assets/be5bc410-fa68-4013-b98d-c4a71f3a3e88)
 也做了非常简单的横屏布局优化：
 ![pintu-fulicat com-1769565671956](https://github.com/user-attachments/assets/65f2f933-a65c-4e6b-8f57-1c9ab0c99a92)
+另外，名字不是说这个ap很6，而是我的猫叫66.
 
 
 
 
-> **一个现代化、高颜值的 Android 漫画/小说/音频阅读器**
+> **一个现代化、高颜值的 Android 漫画/小说/音频阅读器，支持安卓5-15，不过过低版本比如7以下可能有不可预测的报错**
 > 基于 Jetpack Compose 构建，打造极致流畅的沉浸式阅读体验
 
 ## ✨ 核心特性 | Features
@@ -70,4 +71,4 @@
 
 ## 📄 许可证 | License
 
-本项目采用 [MIT License](LICENSE) 授权。
+
