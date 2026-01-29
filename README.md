@@ -1,19 +1,44 @@
 # 📚 6的Library
+百分之九十五的代码来自ai，此处鸣谢clauld gpt gemini（手动狗头）。本人只做了简单修改和调试以及鞭打ai等工作。此README的百分之八十同样出自ai之手。
+注意，本app是一个纯本地资源的阅读工具，不具备任何联网功能，目前也没有书源/漫画源/音源接口。也许以后会做也许不会。附几张运行截图：
+![pintu-fulicat com-1769565267961](https://github.com/user-attachments/assets/be5bc410-fa68-4013-b98d-c4a71f3a3e88)
+也做了非常简单的横屏布局优化：
+![pintu-fulicat com-1769565671956](https://github.com/user-attachments/assets/65f2f933-a65c-4e6b-8f57-1c9ab0c99a92)
+另外，名字不是说这个ap很6，而是我的猫叫66.
+推荐的文件存放逻辑：
+```text
+📂 资源文件夹 
+ │
+ ├─ 📂 漫画 (Comics)
+ │   ├─ 📂/📦 [漫画1]        <-- 结构A: 多章节 (内含分卷文件夹)
+ │   │   ├─ 📂  第1卷
+ │   │   └─ 📂  第2卷
+ │   │
+ │   └─ 📂/📦 [漫画2]      <-- 结构B: 单章节 (内含图片)
+ │       ├─ 📄 01.jpg
+ │       └─ 📄 02.png
+ │
+ ├─ 📂 小说 (Novels)
+ │   ├─ 📄 小说1.txt       (需手动设置封面)
+ │   └─ 📄 小说2.epub      (自动读取封面)
+ │
+ └─ 📂 歌曲 (Music)
+     ├─ 🎵 歌曲1.mp3     (单曲直接存放)
+     └─ 📂 [周杰伦专辑]    (专辑文件夹)
+         ├─ 🎵 歌曲文件.mp3
+         ├─ 🖼️ cover.jpg
+         └─ 📄 歌词.lrc
+```
+选定漫画/小说/歌曲为扫描的目标文件夹。
 
-> **一个现代化、高颜值的 Android 漫画与媒体阅读器**
->
-> *基于 Jetpack Compose 构建，打造极致流畅的沉浸式阅读体验*
-
-![Kotlin](https://img.shields.io/badge/Kotlin-2.0.0-7F52FF?style=for-the-badge&logo=kotlin)
-![Compose](https://img.shields.io/badge/Jetpack%20Compose-M3-4285F4?style=for-the-badge&logo=android)
-![Android](https://img.shields.io/badge/Android-15-3DDC84?style=for-the-badge&logo=android)
-![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
+> **一个现代化、高颜值的 Android 漫画/小说/音频阅读器，支持安卓5-15，不过过低版本比如7以下可能有不可预测的报错**
+> 基于 Jetpack Compose 构建，打造极致流畅的沉浸式阅读体验
 
 ## ✨ 核心特性 | Features
 
 ### 📖 极致阅读体验 (Immersive Reader)
 专为长时间阅读打造，提供高度可定制的阅读环境：
-- **多模式护眼**：内置「羊皮纸」、「夜间模式」、「纯白」、「灰度」及「少女粉」等多种主题。
+- **多模式护眼**：内置「羊皮纸」、「夜间模式」、「纯白」、「灰度」及等多种主题。
 - **排版定制**：自由调节字号、行高 (1.6x)、段间距及水平边距。
 - **自定义背景**：支持设置个性化背景图片，并调节遮罩透明度，确保文字清晰可读。
 - **智能排版**：支持自定义字体（宋体、黑体、等宽），满足不同阅读偏好。
@@ -56,7 +81,7 @@
 ### 编译运行
 1. 克隆仓库：
    ```bash
-   git clone https://github.com/your-username/6-Library.git
+   git clone https://github.com/alen123222/6-Library.git
    ```
 2. 打开 Android Studio 并导入项目。
 3. 等待 Gradle Sync 完成。
@@ -68,4 +93,4 @@
 
 ## 📄 许可证 | License
 
-本项目采用 [MIT License](LICENSE) 授权。
+
