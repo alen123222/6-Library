@@ -240,6 +240,18 @@ fun ComicApp(
         updateAudioHistory(audioHistoryList.map { if (it.id == id) transform(it) else it })
     }
 
+    // 更新单曲收藏状态
+    fun updateAudioTrackFavorite(audioId: String, trackIndex: Int) {
+        updateAudioItem(audioId) { audio ->
+            audio.copy(
+                tracks = audio.tracks.mapIndexed { index, track ->
+                    if (index == trackIndex) track.copy(isFavorite = !track.isFavorite)
+                    else track
+                }
+            )
+        }
+    }
+
 
     // 搜索状态
     var isSearchActive by remember { mutableStateOf(false) }
@@ -298,6 +310,7 @@ fun ComicApp(
     var itemToDelete by remember { mutableStateOf<MediaHistory?>(null) }
 
     var longPressedItem by remember { mutableStateOf<MediaHistory?>(null) }
+    var longPressedTrackIndex by remember { mutableStateOf<Int?>(null) }  // 用于单曲收藏
     var showDisplayModeMenu by remember { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }
     var showDetailOverlayDialog by remember { mutableStateOf(false) }
@@ -1398,6 +1411,13 @@ fun ComicApp(
                                     currentScreen = Screen.Details(MediaType.AUDIO, audio.id, trackIndex)
                                 }
                             },
+                            onAudioTrackLongClick = { audio, trackIndex ->
+                                if (!isMultiSelectMode) {
+                                    longPressedItem = audio
+                                    longPressedTrackIndex = trackIndex
+                                    showHomeLongPressDialog = true
+                                }
+                            },
                             onNavigateToPlayer = {
                                 playbackState.audioId?.let { audioId ->
                                     // 传入 -1 作为位置，表示不需要 seek，保持当前播放位置
@@ -1685,11 +1705,24 @@ fun ComicApp(
 
     if (showHomeLongPressDialog && longPressedItem != null) {
         val item = longPressedItem!!
-        val itemName = item.name
+        val itemName = if (longPressedTrackIndex != null && item is AudioHistory) {
+            // 单曲模式下显示歌曲名
+            item.tracks.getOrNull(longPressedTrackIndex!!)?.name ?: item.name
+        } else {
+            item.name
+        }
         val itemIsNsfw = item.isNsfw
-        val itemIsFavorite = item.isFavorite
+        // 单曲模式下检查 track 级别的收藏状态
+        val itemIsFavorite = if (longPressedTrackIndex != null && item is AudioHistory) {
+            item.tracks.getOrNull(longPressedTrackIndex!!)?.isFavorite ?: false
+        } else {
+            item.isFavorite
+        }
         AlertDialog(
-            onDismissRequest = { showHomeLongPressDialog = false },
+            onDismissRequest = { 
+                showHomeLongPressDialog = false
+                longPressedTrackIndex = null
+            },
             icon = {
                 when (currentMediaType) {
                     MediaType.COMIC -> Icon(Icons.Rounded.MenuBook, null)
@@ -1771,10 +1804,16 @@ fun ComicApp(
                                 updateNovelItem(item.id) { it.copy(isFavorite = !it.isFavorite) }
                             }
                             is AudioHistory -> {
-                                updateAudioItem(item.id) { it.copy(isFavorite = !it.isFavorite) }
+                                // 单曲模式下更新单曲收藏，否则更新专辑收藏
+                                if (longPressedTrackIndex != null) {
+                                    updateAudioTrackFavorite(item.id, longPressedTrackIndex!!)
+                                } else {
+                                    updateAudioItem(item.id) { it.copy(isFavorite = !it.isFavorite) }
+                                }
                             }
                         }
                         showHomeLongPressDialog = false
+                        longPressedTrackIndex = null
                     }) {
                         Text(if (itemIsFavorite) "取消收藏" else "加入收藏")
                     }

@@ -94,6 +94,7 @@ fun HomeScreen(
     onHistoryItemClick: (MediaHistory) -> Unit,
     onHistoryItemLongClick: (MediaHistory) -> Unit,
     onAudioTrackClick: (AudioHistory, Int) -> Unit = { _, _ -> },
+    onAudioTrackLongClick: (AudioHistory, Int) -> Unit = { _, _ -> },
     onToggleSelection: (String) -> Unit = {},
     onNavigateToPlayer: () -> Unit = {}
 ) {
@@ -197,6 +198,7 @@ fun HomeScreen(
                     onHistoryItemClick = onHistoryItemClick,
                     onHistoryItemLongClick = onHistoryItemLongClick,
                     onAudioTrackClick = onAudioTrackClick,
+                    onAudioTrackLongClick = onAudioTrackLongClick,
                     onToggleSelection = onToggleSelection,
                     onNavigateToPlayer = onNavigateToPlayer
                 )
@@ -495,7 +497,7 @@ fun HomeScreen(
                                     tracks = listOf(track),
                                     lastPlayedIndex = 0,
                                     lastPlayedPosition = 0,
-                                    isFavorite = audio.isFavorite,
+                                    isFavorite = track.isFavorite,
                                     isNsfw = audio.isNsfw
                                 )
                                 val isSelected = selectedItems.contains(audio.id)
@@ -508,8 +510,9 @@ fun HomeScreen(
                                                 // 点击行为根据显示模式决定
                                                 onAudioTrackClick(audio, trackIndex)
                                             },
-                                            onLongClick = { onHistoryItemLongClick(audio) },
-                                            cardAlpha
+                                            onLongClick = { onAudioTrackLongClick(audio, trackIndex) },
+                                            cardAlpha,
+                                            showFavorite = true
                                         )
                                     else
                                         AudioHistoryItemGridCard(
@@ -519,8 +522,9 @@ fun HomeScreen(
                                                 // 点击行为根据显示模式决定
                                                 onAudioTrackClick(audio, trackIndex)
                                             },
-                                            onLongClick = { onHistoryItemLongClick(audio) },
-                                            cardAlpha
+                                            onLongClick = { onAudioTrackLongClick(audio, trackIndex) },
+                                            cardAlpha,
+                                            showFavorite = true
                                         )
                                     if (isMultiSelectMode) {
                                         Box(
@@ -577,9 +581,9 @@ fun HomeScreen(
                                 val isSelected = selectedItems.contains(history.id)
                                 Box {
                                     if (displayMode == DisplayMode.ListView)
-                                        AudioHistoryItemCard(history, currentTheme, { onHistoryItemClick(history) }, { onHistoryItemLongClick(history) }, cardAlpha)
+                                        AudioHistoryItemCard(history, currentTheme, { onHistoryItemClick(history) }, { onHistoryItemLongClick(history) }, cardAlpha, showFavorite = false)
                                     else
-                                        AudioHistoryItemGridCard(history, currentTheme, { onHistoryItemClick(history) }, { onHistoryItemLongClick(history) }, cardAlpha)
+                                        AudioHistoryItemGridCard(history, currentTheme, { onHistoryItemClick(history) }, { onHistoryItemLongClick(history) }, cardAlpha, showFavorite = false)
                                     if (isMultiSelectMode) {
                                         Box(
                                             modifier = Modifier
@@ -730,6 +734,7 @@ fun RowScope.LandscapeContentArea(
     onHistoryItemClick: (MediaHistory) -> Unit,
     onHistoryItemLongClick: (MediaHistory) -> Unit,
     onAudioTrackClick: (AudioHistory, Int) -> Unit,
+    onAudioTrackLongClick: (AudioHistory, Int) -> Unit,
     onToggleSelection: (String) -> Unit,
     onNavigateToPlayer: () -> Unit
 ) {
@@ -943,15 +948,15 @@ fun RowScope.LandscapeContentArea(
                                         tracks = listOf(track),
                                         lastPlayedIndex = 0,
                                         lastPlayedPosition = 0,
-                                        isFavorite = audio.isFavorite,
+                                        isFavorite = track.isFavorite,
                                         isNsfw = audio.isNsfw
                                     )
                                     val isSelected = selectedItems.contains(audio.id)
                                     Box {
                                         if (displayMode == DisplayMode.ListView)
-                                            AudioHistoryItemCard(singleTrackAudio, currentTheme, { onAudioTrackClick(audio, trackIndex) }, { onHistoryItemLongClick(audio) }, cardAlpha)
+                                            AudioHistoryItemCard(singleTrackAudio, currentTheme, { onAudioTrackClick(audio, trackIndex) }, { onAudioTrackLongClick(audio, trackIndex) }, cardAlpha, showFavorite = true)
                                         else
-                                            AudioHistoryItemGridCard(singleTrackAudio, currentTheme, { onAudioTrackClick(audio, trackIndex) }, { onHistoryItemLongClick(audio) }, cardAlpha)
+                                            AudioHistoryItemGridCard(singleTrackAudio, currentTheme, { onAudioTrackClick(audio, trackIndex) }, { onAudioTrackLongClick(audio, trackIndex) }, cardAlpha, showFavorite = true)
                                         if (isMultiSelectMode) {
                                             Box(
                                                 modifier = Modifier
@@ -1003,9 +1008,9 @@ fun RowScope.LandscapeContentArea(
                                     val isSelected = selectedItems.contains(history.id)
                                     Box {
                                         if (displayMode == DisplayMode.ListView)
-                                            AudioHistoryItemCard(history, currentTheme, { onHistoryItemClick(history) }, { onHistoryItemLongClick(history) }, cardAlpha)
+                                            AudioHistoryItemCard(history, currentTheme, { onHistoryItemClick(history) }, { onHistoryItemLongClick(history) }, cardAlpha, showFavorite = false)
                                         else
-                                            AudioHistoryItemGridCard(history, currentTheme, { onHistoryItemClick(history) }, { onHistoryItemLongClick(history) }, cardAlpha)
+                                            AudioHistoryItemGridCard(history, currentTheme, { onHistoryItemClick(history) }, { onHistoryItemLongClick(history) }, cardAlpha, showFavorite = false)
                                         if (isMultiSelectMode) {
                                             Box(
                                                 modifier = Modifier

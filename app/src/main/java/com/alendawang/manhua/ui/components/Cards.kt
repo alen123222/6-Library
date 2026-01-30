@@ -345,7 +345,7 @@ fun NovelHistoryItemGridCard(
 // --- 音频历史卡片 (列表视图) ---
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun AudioHistoryItemCard(history: AudioHistory, theme: AppTheme, onClick: () -> Unit, onLongClick: () -> Unit, containerAlpha: Float = 1f) {
+fun AudioHistoryItemCard(history: AudioHistory, theme: AppTheme, onClick: () -> Unit, onLongClick: () -> Unit, containerAlpha: Float = 1f, showFavorite: Boolean = true) {
     val context = LocalContext.current
     val imageRequest = remember(history.id) {
         ImageRequest.Builder(context)
@@ -400,7 +400,7 @@ fun AudioHistoryItemCard(history: AudioHistory, theme: AppTheme, onClick: () -> 
                     )
                 }
             }
-            if (history.isFavorite) {
+            if (showFavorite && history.isFavorite) {
                 Icon(Icons.Rounded.Favorite, null, tint = Color(0xFFFF5252), modifier = Modifier.padding(end = 8.dp))
             }
         }
@@ -415,7 +415,8 @@ fun AudioHistoryItemGridCard(
     theme: AppTheme, 
     onClick: () -> Unit, 
     onLongClick: () -> Unit, 
-    containerAlpha: Float = 1f
+    containerAlpha: Float = 1f,
+    showFavorite: Boolean = true
 ) {
     val context = LocalContext.current
     val imageRequest = remember(history.id) {
@@ -455,7 +456,7 @@ fun AudioHistoryItemGridCard(
                     .align(Alignment.BottomCenter)
                     .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f)))))
 
-                if (history.isFavorite) {
+                if (showFavorite && history.isFavorite) {
                     Box(modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).background(Color.White.copy(alpha = 0.9f), CircleShape).padding(4.dp)) {
                         Icon(Icons.Rounded.Favorite, null, tint = Color(0xFFFF5252), modifier = Modifier.size(14.dp))
                     }

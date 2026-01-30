@@ -475,6 +475,15 @@ fun AudioDetailScreen(
                                         fontWeight = if (isTrackPlaying) FontWeight.Bold else FontWeight.Normal,
                                         color = Color.White.copy(alpha = 0.9f)
                                     )
+                                    // 收藏红心 - 显示在曲目名称右侧
+                                    if (track.isFavorite) {
+                                        Icon(
+                                            Icons.Rounded.Favorite,
+                                            contentDescription = null,
+                                            tint = Color(0xFFFF5252),
+                                            modifier = Modifier.size(16.dp).padding(end = 4.dp)
+                                        )
+                                    }
                                     if (isHighlighted && !isTrackPlaying) {
                                         Icon(
                                             Icons.Rounded.Search,

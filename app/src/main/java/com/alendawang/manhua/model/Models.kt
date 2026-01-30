@@ -77,7 +77,8 @@ data class NovelHistory(
 data class AudioTrack(
     val name: String,
     val uriString: String,
-    val duration: Long = 0
+    val duration: Long = 0,
+    val isFavorite: Boolean = false
 )
 
 @Immutable
