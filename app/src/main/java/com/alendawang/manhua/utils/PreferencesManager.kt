@@ -192,36 +192,25 @@ private fun smartCompare(a: String, b: String): Int {
     return (languageOrder[localeA] ?: 0) - (languageOrder[localeB] ?: 0)
 }
 
-// --- 漫画排序函数 ---
-fun applySort(list: List<ComicHistory>, option: SortOption): List<ComicHistory> {
-    val optionComparator: Comparator<ComicHistory> = when (option) {
+// --- 通用媒体排序函数 (泛型实现) ---
+/**
+ * 对实现 MediaHistory 接口的列表进行排序
+ * 收藏夹项目始终排在最前面，然后按指定选项排序
+ */
+fun <T : MediaHistory> applySortGeneric(list: List<T>, option: SortOption): List<T> {
+    val optionComparator: Comparator<T> = when (option) {
         SortOption.TimeDesc -> compareByDescending { it.timestamp }
         SortOption.TimeAsc -> compareBy { it.timestamp }
         SortOption.NameAsc -> Comparator { a, b -> smartCompare(a.name, b.name) }
         SortOption.NameDesc -> Comparator { a, b -> smartCompare(b.name, a.name) }
     }
-    return list.sortedWith(compareByDescending<ComicHistory> { it.isFavorite }.then(optionComparator))
+    return list.sortedWith(compareByDescending<T> { it.isFavorite }.then(optionComparator))
 }
 
-fun applyNovelSort(list: List<NovelHistory>, option: SortOption): List<NovelHistory> {
-    val optionComparator: Comparator<NovelHistory> = when (option) {
-        SortOption.TimeDesc -> compareByDescending { it.timestamp }
-        SortOption.TimeAsc -> compareBy { it.timestamp }
-        SortOption.NameAsc -> Comparator { a, b -> smartCompare(a.name, b.name) }
-        SortOption.NameDesc -> Comparator { a, b -> smartCompare(b.name, a.name) }
-    }
-    return list.sortedWith(compareByDescending<NovelHistory> { it.isFavorite }.then(optionComparator))
-}
-
-fun applyAudioSort(list: List<AudioHistory>, option: SortOption): List<AudioHistory> {
-    val optionComparator: Comparator<AudioHistory> = when (option) {
-        SortOption.TimeDesc -> compareByDescending { it.timestamp }
-        SortOption.TimeAsc -> compareBy { it.timestamp }
-        SortOption.NameAsc -> Comparator { a, b -> smartCompare(a.name, b.name) }
-        SortOption.NameDesc -> Comparator { a, b -> smartCompare(b.name, a.name) }
-    }
-    return list.sortedWith(compareByDescending<AudioHistory> { it.isFavorite }.then(optionComparator))
-}
+// --- 向后兼容的类型特定函数 ---
+fun applySort(list: List<ComicHistory>, option: SortOption): List<ComicHistory> = applySortGeneric(list, option)
+fun applyNovelSort(list: List<NovelHistory>, option: SortOption): List<NovelHistory> = applySortGeneric(list, option)
+fun applyAudioSort(list: List<AudioHistory>, option: SortOption): List<AudioHistory> = applySortGeneric(list, option)
 
 // --- 漫画历史管理 ---
 fun updateComicHistoryAndSort(context: Context, currentList: List<ComicHistory>, newItem: ComicHistory, sortOption: SortOption): List<ComicHistory> {

@@ -1,1037 +1,0 @@
-> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
-> Task :app:preBuild UP-TO-DATE
-> Task :app:preReleaseBuild UP-TO-DATE
-> Task :app:checkReleaseAarMetadata UP-TO-DATE
-> Task :app:generateReleaseResValues UP-TO-DATE
-> Task :app:mapReleaseSourceSetPaths UP-TO-DATE
-> Task :app:generateReleaseResources UP-TO-DATE
-> Task :app:mergeReleaseResources UP-TO-DATE
-> Task :app:packageReleaseResources UP-TO-DATE
-> Task :app:parseReleaseLocalResources UP-TO-DATE
-> Task :app:createReleaseCompatibleScreenManifests UP-TO-DATE
-> Task :app:extractDeepLinksRelease UP-TO-DATE
-> Task :app:processReleaseMainManifest UP-TO-DATE
-> Task :app:processReleaseManifest UP-TO-DATE
-> Task :app:processReleaseManifestForPackage UP-TO-DATE
-> Task :app:processReleaseResources UP-TO-DATE
-
-> Task :app:compileReleaseKotlin FAILED
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:153:10 Syntax error: Expecting 'catch' or 'finally'.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:156:9 Unresolved reference 'imageEntries'.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:156:33 Cannot infer type for this parameter. Please specify it explicitly.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:156:36 Cannot infer type for this parameter. Please specify it explicitly.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:161:27 Unresolved reference 'imageEntries'.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:161:53 Cannot infer type for this parameter. Please specify it explicitly.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:161:60 Cannot infer type for this parameter. Please specify it explicitly.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:161:73 Cannot infer type for this parameter. Please specify it explicitly.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:161:73 Unresolved reference. None of the following candidates is applicable because of a receiver type mismatch:
-fun <A, B> A.to(that: B): Pair<A, B>
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:161:84 Overload resolution ambiguity between candidates:
-fun <K, V> Array<out Pair<K, V>>.toMap(): Map<K, V>
-fun <K, V> Iterable<Pair<K, V>>.toMap(): Map<K, V>
-fun <K, V> Map<out K, V>.toMap(): Map<K, V>
-fun <K, V> Sequence<Pair<K, V>>.toMap(): Map<K, V>
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:164:29 Unresolved reference 'cacheDir'.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:164:55 Unresolved reference 'name'.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:164:57 Unresolved reference 'it'.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:164:68 Overload resolution ambiguity between candidates:
-fun <T> Array<out T>.toSet(): Set<T>
-fun BooleanArray.toSet(): Set<Boolean>
-fun ByteArray.toSet(): Set<Byte>
-fun CharArray.toSet(): Set<Char>
-fun DoubleArray.toSet(): Set<Double>
-fun FloatArray.toSet(): Set<Float>
-fun IntArray.toSet(): Set<Int>
-fun LongArray.toSet(): Set<Long>
-fun ShortArray.toSet(): Set<Short>
-fun <T> Iterable<T>.toSet(): Set<T>
-fun <T> Sequence<T>.toSet(): Set<T>
-fun CharSequence.toSet(): Set<Char>
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:164:79 Cannot infer type for this parameter. Please specify it explicitly.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:165:24 Unresolved reference 'imageEntries'.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:165:43 Cannot infer type for this parameter. Please specify it explicitly.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:172:9 Argument type mismatch: actual type is 'kotlin.Unit', but 'kotlin.collections.List<android.net.Uri>' was expected.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:172:13 Unresolved reference 'not' for operator '!'.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:173:48 Function invocation 'charset(...)' expected.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:180:54 Unresolved reference 'cacheDir'.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:181:48 Unresolved reference 'exists'.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:196:9 Syntax error: Expecting a top level declaration.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:196:21 Syntax error: Expecting a top level declaration.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:196:22 Syntax error: Expecting a top level declaration.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:196:33 Syntax error: Expecting a top level declaration.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:196:33 Function declaration must have a name.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:196:35 Unresolved reference 'index'.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:196:40 Syntax error: Unexpected tokens (use ';' to separate expressions on the same line).
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:197:23 Unresolved reference 'name'.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:198:31 Unresolved reference 'cacheDir'.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:198:58 Unresolved reference 'index'.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:200:5 Syntax error: Expecting a top level declaration.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:200:7 Syntax error: Expecting a top level declaration.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:200:13 Syntax error: Expecting a top level declaration.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:200:14 Syntax error: Expecting a top level declaration.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:200:15 Syntax error: Expecting a top level declaration.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:200:17 Syntax error: Expecting a top level declaration.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:200:26 Syntax error: Expecting a top level declaration.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:200:28 Syntax error: Expecting a top level declaration.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:200:28 Function declaration must have a name.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:201:9 Unresolved reference 'e'.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:202:9 Cannot infer type for this parameter. Please specify it explicitly.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:202:9 Not enough information to infer type argument for 'T'.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:204:1 Syntax error: Expecting a top level declaration.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:207:98 Cannot infer type for this parameter. Please specify it explicitly.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:207:126 Cannot infer type for this parameter. Please specify it explicitly.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:223:10 Syntax error: Expecting 'catch' or 'finally'.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:224:9 Unresolved reference 'count'.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:225:7 Unresolved reference 'catch'.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:225:14 Unresolved reference 'e'.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:225:15 Syntax error: Expecting ')'.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:225:15 Syntax error: Expecting a top level declaration.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:225:17 Syntax error: Expecting a top level declaration.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:225:26 Syntax error: Expecting a top level declaration.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:225:28 Syntax error: Expecting a top level declaration.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:225:28 Function declaration must have a name.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:228:1 Syntax error: Expecting a top level declaration.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:231:86 Cannot infer type for this parameter. Please specify it explicitly.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:231:114 Cannot infer type for this parameter. Please specify it explicitly.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:243:10 Syntax error: Expecting 'catch' or 'finally'.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:244:9 Unresolved reference 'entries'.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:245:7 Unresolved reference 'catch'.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:245:14 Unresolved reference 'e'.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:245:15 Syntax error: Expecting ')'.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:245:15 Syntax error: Expecting a top level declaration.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:245:17 Syntax error: Expecting a top level declaration.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:245:26 Syntax error: Expecting a top level declaration.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:245:28 Syntax error: Expecting a top level declaration.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:245:28 Function declaration must have a name.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:246:9 Cannot infer type for this parameter. Please specify it explicitly.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:246:9 Not enough information to infer type argument for 'T'.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:248:1 Syntax error: Expecting a top level declaration.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:294:10 Syntax error: Expecting 'catch' or 'finally'.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:296:13 Unresolved reference 'imageNames'.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:298:9 Unresolved reference 'imageNames'.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:298:31 Cannot infer type for this parameter. Please specify it explicitly.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:298:34 Cannot infer type for this parameter. Please specify it explicitly.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:301:30 Unresolved reference 'imageNames'.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:304:9 Argument type mismatch: actual type is 'kotlin.Unit', but 'kotlin.Nothing?' was expected.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:304:44 Function invocation 'charset(...)' expected.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:308:25 Unresolved reference 'coverFile'.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:311:44 Unresolved reference 'coverFile'.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:319:9 Syntax error: Expecting a top level declaration.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:320:5 Syntax error: Expecting a top level declaration.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:320:7 Syntax error: Expecting a top level declaration.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:320:13 Syntax error: Expecting a top level declaration.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:320:14 Syntax error: Expecting a top level declaration.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:320:15 Syntax error: Expecting a top level declaration.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:320:17 Syntax error: Expecting a top level declaration.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:320:26 Syntax error: Expecting a top level declaration.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:320:28 Syntax error: Expecting a top level declaration.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:320:28 Function declaration must have a name.
-e: file:///C:/Users/13779/Desktop/Manhua/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt:323:1 Syntax error: Expecting a top level declaration.
-
-FAILURE: Build failed with an exception.
-
-* What went wrong:
-Execution failed for task ':app:compileReleaseKotlin'.
-> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
-   > Compilation error. See log for more details
-
-* Try:
-> Run with --stacktrace option to get the stack trace.
-> Run with --info or --debug option to get more log output.
-> Run with --scan to get full insights.
-> Get more help at https://help.gradle.org.
-
-BUILD FAILED in 1s
-14 actionable tasks: 1 executed, 13 up-to-date
->   T a s k   : a p p : c h e c k K o t l i n G r a d l e P l u g i n C o n f i g u r a t i o n E r r o r s   S K I P P E D  
- >   T a s k   : a p p : p r e B u i l d   U P - T O - D A T E  
- >   T a s k   : a p p : p r e R e l e a s e B u i l d   U P - T O - D A T E  
- >   T a s k   : a p p : c h e c k R e l e a s e A a r M e t a d a t a   U P - T O - D A T E  
- >   T a s k   : a p p : g e n e r a t e R e l e a s e R e s V a l u e s   U P - T O - D A T E  
- >   T a s k   : a p p : m a p R e l e a s e S o u r c e S e t P a t h s   U P - T O - D A T E  
- >   T a s k   : a p p : g e n e r a t e R e l e a s e R e s o u r c e s   U P - T O - D A T E  
- >   T a s k   : a p p : m e r g e R e l e a s e R e s o u r c e s   U P - T O - D A T E  
- >   T a s k   : a p p : p a c k a g e R e l e a s e R e s o u r c e s   U P - T O - D A T E  
- >   T a s k   : a p p : p a r s e R e l e a s e L o c a l R e s o u r c e s   U P - T O - D A T E  
- >   T a s k   : a p p : c r e a t e R e l e a s e C o m p a t i b l e S c r e e n M a n i f e s t s   U P - T O - D A T E  
- >   T a s k   : a p p : e x t r a c t D e e p L i n k s R e l e a s e   U P - T O - D A T E  
- >   T a s k   : a p p : p r o c e s s R e l e a s e M a i n M a n i f e s t   U P - T O - D A T E  
- >   T a s k   : a p p : p r o c e s s R e l e a s e M a n i f e s t   U P - T O - D A T E  
- >   T a s k   : a p p : p r o c e s s R e l e a s e M a n i f e s t F o r P a c k a g e   U P - T O - D A T E  
- >   T a s k   : a p p : p r o c e s s R e l e a s e R e s o u r c e s   U P - T O - D A T E  
-  
- >   T a s k   : a p p : c o m p i l e R e l e a s e K o t l i n   F A I L E D  
- . \ g r a d l e w   :   e :   f i l e : /  
- / / C : / U s e r s / 1 3 7 7 9 / D e s k  
- t o p / M a n h u a / a p p / s r c / m a  
- i n / j a v a / c o m / a l e n d a w a n  
- g / m a n h u a / u t i l s / F i l e U t  
- i l s . k t : 1 5 3 : 1 0   S y n t a x    
- e r r o r :   E x p e c t i n g    
- ' c a t c h '   o r   ' f i n a l l y ' .  
- A t   l i n e : 1   c h a r : 4 1  
- +   . . .   a n d r o i d    
- s t u d i o \ j b r " ;    
- . \ g r a d l e w    
- c o m p i l e R e l e a s e K o t l i n    
- * > >   b u i l d _ l o g . t x t  
- +                                          
-             ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~  
- ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~  
- ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~  
-         +   C a t e g o r y I n f o        
-                       :   N o t S p e      
-     c i f i e d :   ( e :   f i l e        
-   : / / / C : / U . . . '   o r            
- ' f i n a l l y ' . : S t r i n          
- g )   [ ] ,   R e m o t e E x c          
- e p t i o n  
-         +   F u l l y Q u a l i f i e d    
-       E r r o r I d   :   N a t i v e      
-     C o m m a n d E r r o r  
-    
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 1 5 6 : 9  
-   U n r e s o l v e d    
- r e f e r e n c e    
- ' i m a g e E n t r i e s ' .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 1 5 6 : 3  
- 3   C a n n o t   i n f e r   t y p e    
- f o r   t h i s   p a r a m e t e r .    
- P l e a s e   s p e c i f y   i t    
- e x p l i c i t l y .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 1 5 6 : 3  
- 6   C a n n o t   i n f e r   t y p e    
- f o r   t h i s   p a r a m e t e r .    
- P l e a s e   s p e c i f y   i t    
- e x p l i c i t l y .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 1 6 1 : 2  
- 7   U n r e s o l v e d    
- r e f e r e n c e    
- ' i m a g e E n t r i e s ' .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 1 6 1 : 5  
- 3   C a n n o t   i n f e r   t y p e    
- f o r   t h i s   p a r a m e t e r .    
- P l e a s e   s p e c i f y   i t    
- e x p l i c i t l y .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 1 6 1 : 6  
- 0   C a n n o t   i n f e r   t y p e    
- f o r   t h i s   p a r a m e t e r .    
- P l e a s e   s p e c i f y   i t    
- e x p l i c i t l y .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 1 6 1 : 7  
- 3   C a n n o t   i n f e r   t y p e    
- f o r   t h i s   p a r a m e t e r .    
- P l e a s e   s p e c i f y   i t    
- e x p l i c i t l y .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 1 6 1 : 7  
- 3   U n r e s o l v e d    
- r e f e r e n c e .   N o n e   o f    
- t h e   f o l l o w i n g    
- c a n d i d a t e s   i s    
- a p p l i c a b l e   b e c a u s e    
- o f   a   r e c e i v e r   t y p e    
- m i s m a t c h :  
- f u n   < A ,   B >    
- A . t o ( t h a t :   B ) :    
- P a i r < A ,   B >  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 1 6 1 : 8  
- 4   O v e r l o a d    
- r e s o l u t i o n   a m b i g u i t y    
- b e t w e e n   c a n d i d a t e s :  
- f u n   < K ,   V >   A r r a y < o u t    
- P a i r < K ,   V > > . t o M a p ( ) :    
- M a p < K ,   V >  
- f u n   < K ,   V >    
- I t e r a b l e < P a i r < K ,    
- V > > . t o M a p ( ) :   M a p < K ,    
- V >  
- f u n   < K ,   V >   M a p < o u t    
- K ,   V > . t o M a p ( ) :    
- M a p < K ,   V >  
- f u n   < K ,   V >    
- S e q u e n c e < P a i r < K ,    
- V > > . t o M a p ( ) :   M a p < K ,    
- V >  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 1 6 4 : 2  
- 9   U n r e s o l v e d    
- r e f e r e n c e   ' c a c h e D i r ' .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 1 6 4 : 5  
- 5   U n r e s o l v e d    
- r e f e r e n c e   ' n a m e ' .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 1 6 4 : 5  
- 7   U n r e s o l v e d    
- r e f e r e n c e   ' i t ' .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 1 6 4 : 6  
- 8   O v e r l o a d    
- r e s o l u t i o n   a m b i g u i t y    
- b e t w e e n   c a n d i d a t e s :  
- f u n   < T >   A r r a y < o u t    
- T > . t o S e t ( ) :   S e t < T >  
- f u n   B o o l e a n A r r a y . t o S e  
- t ( ) :   S e t < B o o l e a n >  
- f u n    
- B y t e A r r a y . t o S e t ( ) :    
- S e t < B y t e >  
- f u n    
- C h a r A r r a y . t o S e t ( ) :    
- S e t < C h a r >  
- f u n    
- D o u b l e A r r a y . t o S e t ( ) :    
- S e t < D o u b l e >  
- f u n    
- F l o a t A r r a y . t o S e t ( ) :    
- S e t < F l o a t >  
- f u n    
- I n t A r r a y . t o S e t ( ) :    
- S e t < I n t >  
- f u n    
- L o n g A r r a y . t o S e t ( ) :    
- S e t < L o n g >  
- f u n    
- S h o r t A r r a y . t o S e t ( ) :    
- S e t < S h o r t >  
- f u n   < T >    
- I t e r a b l e < T > . t o S e t ( ) :    
- S e t < T >  
- f u n   < T >    
- S e q u e n c e < T > . t o S e t ( ) :    
- S e t < T >  
- f u n   C h a r S e q u e n c e . t o S e  
- t ( ) :   S e t < C h a r >  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 1 6 4 : 7  
- 9   C a n n o t   i n f e r   t y p e    
- f o r   t h i s   p a r a m e t e r .    
- P l e a s e   s p e c i f y   i t    
- e x p l i c i t l y .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 1 6 5 : 2  
- 4   U n r e s o l v e d    
- r e f e r e n c e    
- ' i m a g e E n t r i e s ' .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 1 6 5 : 4  
- 3   C a n n o t   i n f e r   t y p e    
- f o r   t h i s   p a r a m e t e r .    
- P l e a s e   s p e c i f y   i t    
- e x p l i c i t l y .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 1 7 2 : 9  
-   A r g u m e n t   t y p e    
- m i s m a t c h :   a c t u a l    
- t y p e   i s    
- ' k o t l i n . U n i t ' ,   b u t   ' k  
- o t l i n . c o l l e c t i o n s . L i s  
- t < a n d r o i d . n e t . U r i > '    
- w a s   e x p e c t e d .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 1 7 2 : 1  
- 3   U n r e s o l v e d    
- r e f e r e n c e   ' n o t '   f o r    
- o p e r a t o r   ' ! ' .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 1 7 3 : 4  
- 8   F u n c t i o n    
- i n v o c a t i o n    
- ' c h a r s e t ( . . . ) '    
- e x p e c t e d .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 1 8 0 : 5  
- 4   U n r e s o l v e d    
- r e f e r e n c e   ' c a c h e D i r ' .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 1 8 1 : 4  
- 8   U n r e s o l v e d    
- r e f e r e n c e   ' e x i s t s ' .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 1 9 6 : 9  
-   S y n t a x   e r r o r :    
- E x p e c t i n g   a   t o p    
- l e v e l   d e c l a r a t i o n .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 1 9 6 : 2  
- 1   S y n t a x   e r r o r :    
- E x p e c t i n g   a   t o p    
- l e v e l   d e c l a r a t i o n .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 1 9 6 : 2  
- 2   S y n t a x   e r r o r :    
- E x p e c t i n g   a   t o p    
- l e v e l   d e c l a r a t i o n .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 1 9 6 : 3  
- 3   S y n t a x   e r r o r :    
- E x p e c t i n g   a   t o p    
- l e v e l   d e c l a r a t i o n .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 1 9 6 : 3  
- 3   F u n c t i o n    
- d e c l a r a t i o n   m u s t    
- h a v e   a   n a m e .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 1 9 6 : 3  
- 5   U n r e s o l v e d    
- r e f e r e n c e   ' i n d e x ' .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 1 9 6 : 4  
- 0   S y n t a x   e r r o r :    
- U n e x p e c t e d   t o k e n s    
- ( u s e   ' ; '   t o   s e p a r a t e    
- e x p r e s s i o n s   o n   t h e    
- s a m e   l i n e ) .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 1 9 7 : 2  
- 3   U n r e s o l v e d    
- r e f e r e n c e   ' n a m e ' .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 1 9 8 : 3  
- 1   U n r e s o l v e d    
- r e f e r e n c e   ' c a c h e D i r ' .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 1 9 8 : 5  
- 8   U n r e s o l v e d    
- r e f e r e n c e   ' i n d e x ' .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 0 0 : 5  
-   S y n t a x   e r r o r :    
- E x p e c t i n g   a   t o p    
- l e v e l   d e c l a r a t i o n .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 0 0 : 7  
-   S y n t a x   e r r o r :    
- E x p e c t i n g   a   t o p    
- l e v e l   d e c l a r a t i o n .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 0 0 : 1  
- 3   S y n t a x   e r r o r :    
- E x p e c t i n g   a   t o p    
- l e v e l   d e c l a r a t i o n .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 0 0 : 1  
- 4   S y n t a x   e r r o r :    
- E x p e c t i n g   a   t o p    
- l e v e l   d e c l a r a t i o n .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 0 0 : 1  
- 5   S y n t a x   e r r o r :    
- E x p e c t i n g   a   t o p    
- l e v e l   d e c l a r a t i o n .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 0 0 : 1  
- 7   S y n t a x   e r r o r :    
- E x p e c t i n g   a   t o p    
- l e v e l   d e c l a r a t i o n .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 0 0 : 2  
- 6   S y n t a x   e r r o r :    
- E x p e c t i n g   a   t o p    
- l e v e l   d e c l a r a t i o n .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 0 0 : 2  
- 8   S y n t a x   e r r o r :    
- E x p e c t i n g   a   t o p    
- l e v e l   d e c l a r a t i o n .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 0 0 : 2  
- 8   F u n c t i o n    
- d e c l a r a t i o n   m u s t    
- h a v e   a   n a m e .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 0 1 : 9  
-   U n r e s o l v e d    
- r e f e r e n c e   ' e ' .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 0 2 : 9  
-   C a n n o t   i n f e r   t y p e    
- f o r   t h i s   p a r a m e t e r .    
- P l e a s e   s p e c i f y   i t    
- e x p l i c i t l y .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 0 2 : 9  
-   N o t   e n o u g h    
- i n f o r m a t i o n   t o   i n f e r    
- t y p e   a r g u m e n t   f o r    
- ' T ' .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 0 4 : 1  
-   S y n t a x   e r r o r :    
- E x p e c t i n g   a   t o p    
- l e v e l   d e c l a r a t i o n .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 0 7 : 9  
- 8   C a n n o t   i n f e r   t y p e    
- f o r   t h i s   p a r a m e t e r .    
- P l e a s e   s p e c i f y   i t    
- e x p l i c i t l y .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 0 7 : 1  
- 2 6   C a n n o t   i n f e r   t y p e    
- f o r   t h i s   p a r a m e t e r .    
- P l e a s e   s p e c i f y   i t    
- e x p l i c i t l y .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 2 3 : 1  
- 0   S y n t a x   e r r o r :    
- E x p e c t i n g   ' c a t c h '   o r    
- ' f i n a l l y ' .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 2 4 : 9  
-   U n r e s o l v e d    
- r e f e r e n c e   ' c o u n t ' .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 2 5 : 7  
-   U n r e s o l v e d    
- r e f e r e n c e   ' c a t c h ' .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 2 5 : 1  
- 4   U n r e s o l v e d    
- r e f e r e n c e   ' e ' .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 2 5 : 1  
- 5   S y n t a x   e r r o r :    
- E x p e c t i n g   ' ) ' .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 2 5 : 1  
- 5   S y n t a x   e r r o r :    
- E x p e c t i n g   a   t o p    
- l e v e l   d e c l a r a t i o n .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 2 5 : 1  
- 7   S y n t a x   e r r o r :    
- E x p e c t i n g   a   t o p    
- l e v e l   d e c l a r a t i o n .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 2 5 : 2  
- 6   S y n t a x   e r r o r :    
- E x p e c t i n g   a   t o p    
- l e v e l   d e c l a r a t i o n .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 2 5 : 2  
- 8   S y n t a x   e r r o r :    
- E x p e c t i n g   a   t o p    
- l e v e l   d e c l a r a t i o n .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 2 5 : 2  
- 8   F u n c t i o n    
- d e c l a r a t i o n   m u s t    
- h a v e   a   n a m e .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 2 8 : 1  
-   S y n t a x   e r r o r :    
- E x p e c t i n g   a   t o p    
- l e v e l   d e c l a r a t i o n .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 3 1 : 8  
- 6   C a n n o t   i n f e r   t y p e    
- f o r   t h i s   p a r a m e t e r .    
- P l e a s e   s p e c i f y   i t    
- e x p l i c i t l y .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 3 1 : 1  
- 1 4   C a n n o t   i n f e r   t y p e    
- f o r   t h i s   p a r a m e t e r .    
- P l e a s e   s p e c i f y   i t    
- e x p l i c i t l y .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 4 3 : 1  
- 0   S y n t a x   e r r o r :    
- E x p e c t i n g   ' c a t c h '   o r    
- ' f i n a l l y ' .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 4 4 : 9  
-   U n r e s o l v e d    
- r e f e r e n c e   ' e n t r i e s ' .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 4 5 : 7  
-   U n r e s o l v e d    
- r e f e r e n c e   ' c a t c h ' .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 4 5 : 1  
- 4   U n r e s o l v e d    
- r e f e r e n c e   ' e ' .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 4 5 : 1  
- 5   S y n t a x   e r r o r :    
- E x p e c t i n g   ' ) ' .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 4 5 : 1  
- 5   S y n t a x   e r r o r :    
- E x p e c t i n g   a   t o p    
- l e v e l   d e c l a r a t i o n .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 4 5 : 1  
- 7   S y n t a x   e r r o r :    
- E x p e c t i n g   a   t o p    
- l e v e l   d e c l a r a t i o n .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 4 5 : 2  
- 6   S y n t a x   e r r o r :    
- E x p e c t i n g   a   t o p    
- l e v e l   d e c l a r a t i o n .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 4 5 : 2  
- 8   S y n t a x   e r r o r :    
- E x p e c t i n g   a   t o p    
- l e v e l   d e c l a r a t i o n .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 4 5 : 2  
- 8   F u n c t i o n    
- d e c l a r a t i o n   m u s t    
- h a v e   a   n a m e .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 4 6 : 9  
-   C a n n o t   i n f e r   t y p e    
- f o r   t h i s   p a r a m e t e r .    
- P l e a s e   s p e c i f y   i t    
- e x p l i c i t l y .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 4 6 : 9  
-   N o t   e n o u g h    
- i n f o r m a t i o n   t o   i n f e r    
- t y p e   a r g u m e n t   f o r    
- ' T ' .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 4 8 : 1  
-   S y n t a x   e r r o r :    
- E x p e c t i n g   a   t o p    
- l e v e l   d e c l a r a t i o n .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 9 4 : 1  
- 0   S y n t a x   e r r o r :    
- E x p e c t i n g   ' c a t c h '   o r    
- ' f i n a l l y ' .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 9 6 : 1  
- 3   U n r e s o l v e d    
- r e f e r e n c e    
- ' i m a g e N a m e s ' .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 9 8 : 9  
-   U n r e s o l v e d    
- r e f e r e n c e    
- ' i m a g e N a m e s ' .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 9 8 : 3  
- 1   C a n n o t   i n f e r   t y p e    
- f o r   t h i s   p a r a m e t e r .    
- P l e a s e   s p e c i f y   i t    
- e x p l i c i t l y .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 2 9 8 : 3  
- 4   C a n n o t   i n f e r   t y p e    
- f o r   t h i s   p a r a m e t e r .    
- P l e a s e   s p e c i f y   i t    
- e x p l i c i t l y .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 3 0 1 : 3  
- 0   U n r e s o l v e d    
- r e f e r e n c e    
- ' i m a g e N a m e s ' .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 3 0 4 : 9  
-   A r g u m e n t   t y p e    
- m i s m a t c h :   a c t u a l    
- t y p e   i s    
- ' k o t l i n . U n i t ' ,   b u t    
- ' k o t l i n . N o t h i n g ? '    
- w a s   e x p e c t e d .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 3 0 4 : 4  
- 4   F u n c t i o n    
- i n v o c a t i o n    
- ' c h a r s e t ( . . . ) '    
- e x p e c t e d .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 3 0 8 : 2  
- 5   U n r e s o l v e d    
- r e f e r e n c e    
- ' c o v e r F i l e ' .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 3 1 1 : 4  
- 4   U n r e s o l v e d    
- r e f e r e n c e    
- ' c o v e r F i l e ' .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 3 1 9 : 9  
-   S y n t a x   e r r o r :    
- E x p e c t i n g   a   t o p    
- l e v e l   d e c l a r a t i o n .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 3 2 0 : 5  
-   S y n t a x   e r r o r :    
- E x p e c t i n g   a   t o p    
- l e v e l   d e c l a r a t i o n .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 3 2 0 : 7  
-   S y n t a x   e r r o r :    
- E x p e c t i n g   a   t o p    
- l e v e l   d e c l a r a t i o n .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 3 2 0 : 1  
- 3   S y n t a x   e r r o r :    
- E x p e c t i n g   a   t o p    
- l e v e l   d e c l a r a t i o n .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 3 2 0 : 1  
- 4   S y n t a x   e r r o r :    
- E x p e c t i n g   a   t o p    
- l e v e l   d e c l a r a t i o n .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 3 2 0 : 1  
- 5   S y n t a x   e r r o r :    
- E x p e c t i n g   a   t o p    
- l e v e l   d e c l a r a t i o n .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 3 2 0 : 1  
- 7   S y n t a x   e r r o r :    
- E x p e c t i n g   a   t o p    
- l e v e l   d e c l a r a t i o n .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 3 2 0 : 2  
- 6   S y n t a x   e r r o r :    
- E x p e c t i n g   a   t o p    
- l e v e l   d e c l a r a t i o n .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 3 2 0 : 2  
- 8   S y n t a x   e r r o r :    
- E x p e c t i n g   a   t o p    
- l e v e l   d e c l a r a t i o n .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 3 2 0 : 2  
- 8   F u n c t i o n    
- d e c l a r a t i o n   m u s t    
- h a v e   a   n a m e .  
- e :   f i l e : / / / C : / U s e r s / 1  
- 3 7 7 9 / D e s k t o p / M a n h u a / a  
- p p / s r c / m a i n / j a v a / c o m /  
- a l e n d a w a n g / m a n h u a / u t i  
- l s / F i l e U t i l s . k t : 3 2 3 : 1  
-   S y n t a x   e r r o r :    
- E x p e c t i n g   a   t o p    
- l e v e l   d e c l a r a t i o n .  
-  
- F A I L U R E :   B u i l d    
- f a i l e d   w i t h   a n    
- e x c e p t i o n .  
-  
- *   W h a t   w e n t   w r o n g :  
- E x e c u t i o n   f a i l e d   f o r    
- t a s k   ' : a p p : c o m p i l e R e l  
- e a s e K o t l i n ' .  
- >   A   f a i l u r e   o c c u r r e d    
- w h i l e   e x e c u t i n g   o r g . j  
- e t b r a i n s . k o t l i n . c o m p i  
- l e r R u n n e r . G r a d l e C o m p i  
- l e r R u n n e r W i t h W o r k e r s $  
- G r a d l e K o t l i n C o m p i l e r W  
- o r k A c t i o n  
-       >   C o m p i l a t i o n    
- e r r o r .   S e e   l o g   f o r    
- m o r e   d e t a i l s  
-  
- *   T r y :  
- >   R u n   w i t h    
- - - s t a c k t r a c e   o p t i o n    
- t o   g e t   t h e   s t a c k    
- t r a c e .  
- >   R u n   w i t h   - - i n f o   o r    
- - - d e b u g   o p t i o n   t o    
- g e t   m o r e   l o g   o u t p u t .  
- >   R u n   w i t h   - - s c a n   t o    
- g e t   f u l l   i n s i g h t s .  
- >   G e t   m o r e   h e l p   a t   h t  
- t p s : / / h e l p . g r a d l e . o r g  
- .  
-  
- B U I L D   F A I L E D   i n   1 s  
- 1 4   a c t i o n a b l e   t a s k s :   1   e x e c u t e d ,   1 3   u p - t o - d a t e  
- 
