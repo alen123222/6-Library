@@ -1565,7 +1565,7 @@ fun ComicApp(
                                     val chapter = comic.chapters.getOrNull(screen.chapterIndex)
                                     if (chapter != null) {
                                         kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                                            clearComicImageCache(context, chapter.uriString.toUri())
+                                            clearComicImageCache(context, chapter.uriString.toUri(), chapter.internalPath)
                                         }
                                     }
                                 }

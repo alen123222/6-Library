@@ -12,10 +12,106 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+import java.io.InputStream
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.util.zip.ZipInputStream
+import com.github.junrar.Archive
+import android.graphics.BitmapFactory
+import android.graphics.Matrix
+
+// --- 封面压缩配置 ---
+private const val COVER_WIDTH = 300
+private const val COVER_HEIGHT = 450  // 2:3 比例
+private const val COVER_QUALITY = 80  // WebP 质量
+
+// --- 压缩并保存封面图片 (2:3 比例, WebP 格式) ---
+private fun compressAndSaveCover(inputStream: InputStream, outputFile: File): Boolean {
+    return try {
+        val originalBitmap = BitmapFactory.decodeStream(inputStream) ?: return false
+        
+        // 计算缩放比例，保持宽高比并填充目标尺寸
+        val scaleX = COVER_WIDTH.toFloat() / originalBitmap.width
+        val scaleY = COVER_HEIGHT.toFloat() / originalBitmap.height
+        val scale = maxOf(scaleX, scaleY)
+        
+        val matrix = Matrix().apply { postScale(scale, scale) }
+        val scaledBitmap = Bitmap.createBitmap(
+            originalBitmap, 0, 0,
+            originalBitmap.width, originalBitmap.height,
+            matrix, true
+        )
+        
+        // 裁剪到目标尺寸
+        val cropX = (scaledBitmap.width - COVER_WIDTH).coerceAtLeast(0) / 2
+        val cropY = (scaledBitmap.height - COVER_HEIGHT).coerceAtLeast(0) / 2
+        val finalBitmap = Bitmap.createBitmap(
+            scaledBitmap, cropX, cropY,
+            minOf(COVER_WIDTH, scaledBitmap.width),
+            minOf(COVER_HEIGHT, scaledBitmap.height)
+        )
+        
+        // 保存为 WebP 格式
+        outputFile.outputStream().use { out ->
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                finalBitmap.compress(Bitmap.CompressFormat.WEBP_LOSSY, COVER_QUALITY, out)
+            } else {
+                @Suppress("DEPRECATION")
+                finalBitmap.compress(Bitmap.CompressFormat.WEBP, COVER_QUALITY, out)
+            }
+        }
+        
+        // 回收 Bitmap
+        if (finalBitmap !== scaledBitmap) finalBitmap.recycle()
+        if (scaledBitmap !== originalBitmap) scaledBitmap.recycle()
+        originalBitmap.recycle()
+        
+        true
+    } catch (e: Exception) {
+        e.printStackTrace()
+        false
+    }
+}
+
+// --- 从 Bitmap 压缩并保存封面 (用于 PDF) ---
+private fun compressAndSaveCoverFromBitmap(bitmap: Bitmap, outputFile: File): Boolean {
+    return try {
+        val scaleX = COVER_WIDTH.toFloat() / bitmap.width
+        val scaleY = COVER_HEIGHT.toFloat() / bitmap.height
+        val scale = maxOf(scaleX, scaleY)
+        
+        val matrix = Matrix().apply { postScale(scale, scale) }
+        val scaledBitmap = Bitmap.createBitmap(
+            bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true
+        )
+        
+        val cropX = (scaledBitmap.width - COVER_WIDTH).coerceAtLeast(0) / 2
+        val cropY = (scaledBitmap.height - COVER_HEIGHT).coerceAtLeast(0) / 2
+        val finalBitmap = Bitmap.createBitmap(
+            scaledBitmap, cropX, cropY,
+            minOf(COVER_WIDTH, scaledBitmap.width),
+            minOf(COVER_HEIGHT, scaledBitmap.height)
+        )
+        
+        outputFile.outputStream().use { out ->
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                finalBitmap.compress(Bitmap.CompressFormat.WEBP_LOSSY, COVER_QUALITY, out)
+            } else {
+                @Suppress("DEPRECATION")
+                finalBitmap.compress(Bitmap.CompressFormat.WEBP, COVER_QUALITY, out)
+            }
+        }
+        
+        if (finalBitmap !== scaledBitmap) finalBitmap.recycle()
+        if (scaledBitmap !== bitmap) scaledBitmap.recycle()
+        
+        true
+    } catch (e: Exception) {
+        e.printStackTrace()
+        false
+    }
+}
 
 // --- 图片文件扩展名 ---
 private val imageExtensions = setOf("jpg", "jpeg", "png", "gif", "webp", "bmp")
@@ -208,20 +304,30 @@ internal suspend fun collectZipEntries(context: Context, zipUri: Uri): List<Stri
     }
 }
 
-// --- 收集RAR/CBR中所有条目名称 ---
+// --- 收集RAR/CBR中所有条目名称 (使用临时文件，读取后立即删除) ---
 internal suspend fun collectRarEntries(context: Context, rarUri: Uri): List<String> = withContext(Dispatchers.IO) {
+    var tempFile: File? = null
     try {
-        val cacheFile = getCachedArchiveFile(context, rarUri, "rar") ?: return@withContext emptyList()
-        val archive = com.github.junrar.Archive(cacheFile)
+        // 创建临时文件用于读取 RAR 条目，读取后立即删除
+        tempFile = File.createTempFile("rar_scan_", ".rar", context.cacheDir)
+        context.contentResolver.openInputStream(rarUri)?.use { input ->
+            tempFile.outputStream().use { output ->
+                input.copyTo(output)
+            }
+        }
+        val archive = Archive(tempFile)
         val entries = archive.fileHeaders.map { it.fileName }
         archive.close()
         entries
     } catch (e: Exception) {
         emptyList()
+    } finally {
+        // 立即删除临时文件，不保留缓存
+        tempFile?.delete()
     }
 }
 
-// --- 获取ZIP/CBZ的封面 ---
+// --- 获取ZIP/CBZ的封面 (压缩为 300x450 WebP) ---
 suspend fun getCoverFromZip(context: Context, zipUri: Uri, internalPath: String? = null): String? = withContext(Dispatchers.IO) {
     try {
         val hashSource = zipUri.toString() + (internalPath ?: "")
@@ -231,25 +337,36 @@ suspend fun getCoverFromZip(context: Context, zipUri: Uri, internalPath: String?
         
         val coverDir = File(context.cacheDir, "comic_covers")
         if (!coverDir.exists()) coverDir.mkdirs()
-        val coverFile = File(coverDir, "${hash}_cover.jpg")
+        val coverFile = File(coverDir, "${hash}_cover.webp")
         
+        // 检查新格式和旧格式封面
         if (coverFile.exists()) return@withContext coverFile.absolutePath
+        val oldCoverFile = File(coverDir, "${hash}_cover.jpg")
+        if (oldCoverFile.exists()) {
+            // 迁移旧封面到新格式
+            oldCoverFile.inputStream().use { input ->
+                if (compressAndSaveCover(input, coverFile)) {
+                    oldCoverFile.delete()
+                    return@withContext coverFile.absolutePath
+                }
+            }
+        }
         
         val charset = getZipCharset(context, zipUri)
         
         val imageNames = mutableListOf<String>()
         getZipInputStream(context, zipUri, charset)?.use { zis ->
-                var entry = zis.nextEntry
-                while (entry != null) {
-                    if (!entry.isDirectory && isImageFile(entry.name)) {
-                        if (internalPath == null || entry.name.startsWith(internalPath)) {
-                            imageNames.add(entry.name)
-                        }
+            var entry = zis.nextEntry
+            while (entry != null) {
+                if (!entry.isDirectory && isImageFile(entry.name)) {
+                    if (internalPath == null || entry.name.startsWith(internalPath)) {
+                        imageNames.add(entry.name)
                     }
-                    zis.closeEntry()
-                    entry = zis.nextEntry
                 }
+                zis.closeEntry()
+                entry = zis.nextEntry
             }
+        }
         
         if (imageNames.isEmpty()) return@withContext null
         
@@ -259,18 +376,18 @@ suspend fun getCoverFromZip(context: Context, zipUri: Uri, internalPath: String?
         val firstImageName = imageNames.first()
         
         getZipInputStream(context, zipUri, charset)?.use { zis ->
-                var entry = zis.nextEntry
-                while (entry != null) {
-                    if (entry.name == firstImageName) {
-                        coverFile.outputStream().use { output ->
-                            zis.copyTo(output)
-                        }
+            var entry = zis.nextEntry
+            while (entry != null) {
+                if (entry.name == firstImageName) {
+                    // 使用压缩函数保存封面
+                    if (compressAndSaveCover(zis, coverFile)) {
                         return@withContext coverFile.absolutePath
                     }
-                    zis.closeEntry()
-                    entry = zis.nextEntry
                 }
+                zis.closeEntry()
+                entry = zis.nextEntry
             }
+        }
         
         null
     } catch (e: Exception) {
@@ -366,11 +483,18 @@ suspend fun loadImagesFromRar(context: Context, rarUri: Uri, internalPath: Strin
     }
 }
 
-// --- 计算RAR/CBR中的图片数量 ---
+// --- 计算RAR/CBR中的图片数量 (使用临时文件，读取后立即删除) ---
 suspend fun countImagesInRar(context: Context, rarUri: Uri, internalPath: String? = null): Int = withContext(Dispatchers.IO) {
+    var tempFile: File? = null
     try {
-        val cacheFile = getCachedArchiveFile(context, rarUri, "rar") ?: return@withContext 0
-        val archive = com.github.junrar.Archive(cacheFile)
+        // 创建临时文件用于读取 RAR 条目，读取后立即删除
+        tempFile = File.createTempFile("rar_count_", ".rar", context.cacheDir)
+        context.contentResolver.openInputStream(rarUri)?.use { input ->
+            tempFile.outputStream().use { output ->
+                input.copyTo(output)
+            }
+        }
+        val archive = Archive(tempFile)
         val count = archive.fileHeaders.count { header -> 
             !header.isDirectory && isImageFile(header.fileName) &&
             (internalPath == null || header.fileName.startsWith(internalPath))
@@ -379,14 +503,47 @@ suspend fun countImagesInRar(context: Context, rarUri: Uri, internalPath: String
         count
     } catch (e: Exception) {
         0
+    } finally {
+        // 立即删除临时文件，不保留缓存
+        tempFile?.delete()
     }
 }
 
-// --- 获取RAR/CBR的封面 ---
+// --- 获取RAR/CBR的封面 (压缩为 300x450 WebP) ---
 suspend fun getCoverFromRar(context: Context, rarUri: Uri, internalPath: String? = null): String? = withContext(Dispatchers.IO) {
+    val hashSource = rarUri.toString() + (internalPath ?: "")
+    val hash = MessageDigest.getInstance("MD5")
+        .digest(hashSource.toByteArray())
+        .joinToString("") { "%02x".format(it) }
+    
+    val coverDir = File(context.cacheDir, "comic_covers")
+    if (!coverDir.exists()) coverDir.mkdirs()
+    val coverFile = File(coverDir, "${hash}_cover.webp")
+    
+    // 检查新格式和旧格式封面
+    if (coverFile.exists()) return@withContext coverFile.absolutePath
+    val oldCoverFile = File(coverDir, "${hash}_cover.jpg")
+    if (oldCoverFile.exists()) {
+        // 迁移旧封面到新格式
+        oldCoverFile.inputStream().use { input ->
+            if (compressAndSaveCover(input, coverFile)) {
+                oldCoverFile.delete()
+                return@withContext coverFile.absolutePath
+            }
+        }
+    }
+    
+    var tempFile: File? = null
     try {
-        val cacheFile = getCachedArchiveFile(context, rarUri, "rar") ?: return@withContext null
-        val archive = com.github.junrar.Archive(cacheFile)
+        // 使用临时文件提取封面，提取后立即删除
+        tempFile = File.createTempFile("rar_cover_", ".rar", context.cacheDir)
+        context.contentResolver.openInputStream(rarUri)?.use { input ->
+            tempFile.outputStream().use { output ->
+                input.copyTo(output)
+            }
+        }
+        
+        val archive = Archive(tempFile)
         
         val firstImage = archive.fileHeaders
             .filter { header -> 
@@ -401,27 +558,18 @@ suspend fun getCoverFromRar(context: Context, rarUri: Uri, internalPath: String?
             return@withContext null
         }
         
-        val hashSource = rarUri.toString() + (internalPath ?: "")
-        val hash = MessageDigest.getInstance("MD5")
-            .digest(hashSource.toByteArray())
-            .joinToString("") { "%02x".format(it) }
-        
-        val coverDir = File(context.cacheDir, "comic_covers")
-        if (!coverDir.exists()) coverDir.mkdirs()
-        val coverFile = File(coverDir, "${hash}_cover.jpg")
-        
-        if (!coverFile.exists()) {
-            archive.getInputStream(firstImage).use { input ->
-                coverFile.outputStream().use { output ->
-                    input.copyTo(output)
-                }
-            }
+        // 使用压缩函数保存封面
+        archive.getInputStream(firstImage).use { input ->
+            compressAndSaveCover(input, coverFile)
         }
         
         archive.close()
         coverFile.absolutePath
     } catch (e: Exception) {
         null
+    } finally {
+        // 立即删除临时文件
+        tempFile?.delete()
     }
 }
 
@@ -477,7 +625,7 @@ suspend fun countPagesInPdf(context: Context, pdfUri: Uri): Int = withContext(Di
     }
 }
 
-// --- 获取PDF的封面 ---
+// --- 获取PDF的封面 (压缩为 300x450 WebP) ---
 suspend fun getCoverFromPdf(context: Context, pdfUri: Uri): String? = withContext(Dispatchers.IO) {
     try {
         val hash = MessageDigest.getInstance("MD5")
@@ -486,9 +634,20 @@ suspend fun getCoverFromPdf(context: Context, pdfUri: Uri): String? = withContex
         
         val coverDir = File(context.cacheDir, "comic_covers")
         if (!coverDir.exists()) coverDir.mkdirs()
-        val coverFile = File(coverDir, "${hash}_cover.jpg")
+        val coverFile = File(coverDir, "${hash}_cover.webp")
         
+        // 检查新格式和旧格式封面
         if (coverFile.exists()) return@withContext coverFile.absolutePath
+        val oldCoverFile = File(coverDir, "${hash}_cover.jpg")
+        if (oldCoverFile.exists()) {
+            // 迁移旧封面到新格式
+            oldCoverFile.inputStream().use { input ->
+                if (compressAndSaveCover(input, coverFile)) {
+                    oldCoverFile.delete()
+                    return@withContext coverFile.absolutePath
+                }
+            }
+        }
         
         val fd = context.contentResolver.openFileDescriptor(pdfUri, "r") ?: return@withContext null
         val renderer = PdfRenderer(fd)
@@ -500,9 +659,8 @@ suspend fun getCoverFromPdf(context: Context, pdfUri: Uri): String? = withContex
             page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
             page.close()
             
-            coverFile.outputStream().use { out ->
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
-            }
+            // 使用压缩函数保存封面
+            compressAndSaveCoverFromBitmap(bitmap, coverFile)
             bitmap.recycle()
         }
         

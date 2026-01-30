@@ -4,10 +4,12 @@ import android.content.Context
 import java.io.File
 
 // --- 清理单个漫画的图片缓存 (退出阅读器时调用，保留封面) ---
-fun clearComicImageCache(context: Context, chapterUri: android.net.Uri) {
+fun clearComicImageCache(context: Context, chapterUri: android.net.Uri, internalPath: String? = null) {
     try {
+        // 哈希计算必须与 ImageLoaderUtils 中的加载逻辑一致
+        val hashSource = chapterUri.toString() + (internalPath ?: "")
         val hash = java.security.MessageDigest.getInstance("MD5")
-            .digest(chapterUri.toString().toByteArray())
+            .digest(hashSource.toByteArray())
             .joinToString("") { "%02x".format(it) }
         
         // 删除解压/渲染的图片目录
@@ -17,7 +19,11 @@ fun clearComicImageCache(context: Context, chapterUri: android.net.Uri) {
         }
         
         // 如果是 RAR，也删除压缩包副本
-        val archiveFile = File(context.cacheDir, "archives/$hash.rar")
+        // 注意: getCachedArchiveFile 的哈希只使用 URI，不包含 internalPath
+        val archiveHash = java.security.MessageDigest.getInstance("MD5")
+            .digest(chapterUri.toString().toByteArray())
+            .joinToString("") { "%02x".format(it) }
+        val archiveFile = File(context.cacheDir, "archives/$archiveHash.rar")
         if (archiveFile.exists()) {
             archiveFile.delete()
         }
