@@ -1,0 +1,299 @@
+
+
+I'll start by loading the repository code search ability and exploring the repository structure to understand the codebase comprehensively.Now let me explore the source code directory structure more deeply.Let me try using the GitHub API directly to explore these subdirectories.Now let me read the key source files to understand their content and functionality in depth.Now I have a comprehensive understanding of the repository. Let me compile the detailed functional guide.
+
+---
+
+# 📚 6的Library — 项目功能向导与模块地图
+
+> **仓库地址**: [`alen123222/6-Library`](https://github.com/alen123222/6-Library)
+> **项目定位**: 纯本地 Android 漫画 / 小说 / 音频播放器
+> **技术栈**: 100% Kotlin · Jetpack Compose · Material 3 · Media3 · Coil
+> **最低支持**: Android 5.0 (API 21) · 编译SDK 35
+
+---
+
+## 🗂️ 一、项目整体架构总览
+
+```text
+com.alendawang.manhua/
+│
+├── MainActivity.kt              ← 应用入口 & 核心路由总控（114KB 巨型文件）
+├── AudioPlaybackService.kt      ← 后台音频播放服务
+├── FloatingLyricsService.kt     ← 悬浮歌词窗口服务
+│
+├── model/                       ← 📦 数据模型层
+│   ├── Config.kt                ← 阅读器/音频配置
+│   ├── Enums.kt                 ← 全局枚举定义
+│   └── Models.kt                ← 核心数据模型
+│
+├── navigation/                  ← 🧭 导航路由
+│   └── Screen.kt                ← 屏幕路由定义 & 状态保存
+│
+├── ui/                          ← 🎨 UI 层
+│   ├── components/              ← 可复用 UI 组件
+│   │   ├── Cards.kt             ← 卡片组件（漫画/小说/音频列表卡片）
+│   │   ├── CommonComponents.kt  ← 通用组件
+│   │   ├── Dialogs.kt           ← 对话框集合
+│   │   ├── LyricView.kt         ← 歌词滚动显示组件
+│   │   ├── MeteorSlider.kt      ← 流星进度条
+│   │   └── VinylRecordView.kt   ← 黑胶唱片动画组件
+│   │
+│   ├── screens/                 ← 页面级组件
+│   │   ├── HomeScreen.kt        ← 首页（书架/音频库）
+│   │   ├── DetailScreens.kt     ← 详情页（漫画/小说/音频详情）
+│   │   ├── ReaderScreens.kt     ← 漫画阅读器
+│   │   └── NovelReaderScreen.kt ← 小说阅读器
+│   │
+│   └── theme/                   ← 主题系统
+│       ├── AppColors.kt         ← 应用颜色定义
+│       ├── Color.kt             ← 基础色值
+│       ├── Theme.kt             ← Material 3 主题配置
+│       └── Type.kt              ← 字体排版定义
+│
+├── viewmodel/                   ← 🧠 业务逻辑层
+│   ├── MainViewModel.kt         ← 主 ViewModel（全局状态管理中枢）
+│   └── NovelReaderViewModel.kt  ← 小说阅读器专用 ViewModel
+│
+└── utils/                       ← 🔧 工具类
+    ├── AudioMetadataUtils.kt    ← 音频元数据提取
+    ├── CacheUtils.kt            ← 缓存管理
+    ├── EpubUtils.kt             ← EPUB 解析工具
+    ├── FileUtils.kt             ← 文件操作工具
+    ├── Helpers.kt               ← 通用辅助函数
+    ├── ImageLoaderUtils.kt      ← 图片加载(含压缩包图片)
+    ├── NovelUtils.kt            ← 小说解析工具
+    ├── PreferencesManager.kt    ← SharedPreferences 持久化
+    ├── ScannerUtils.kt          ← 文件扫描引擎
+    └── StringResources.kt       ← 多语言字符串资源
+```
+
+---
+
+## 🧩 二、各模块详细功能说明
+
+---
+
+### 📦 模块 1：数据模型层 (`model/`)
+
+#### [`Config.kt`](https://github.com/alen123222/6-Library/blob/main/app/src/main/java/com/alendawang/manhua/model/Config.kt) — 配置数据类
+
+| 类/枚举 | 用途 |
+|---------|------|
+| `ReaderConfig` | 小说阅读器配置（字号、行高、段间距、边距、背景色、字体、自定义背景等） |
+| `ReaderBackgroundColor` | 阅读器背景预设：羊皮纸、夜间模式、纯白、灰度、少女 |
+| `FontType` | 字体类型：系统字体、宋体、黑体、等宽 |
+| `PageContent` | 分页内容数据（起始/结束索引、文本内容、页码） |
+| `AudioPlayerConfig` | 音频播放器配置（背景、歌词字号/颜色、遮罩透明度、播放速度、悬浮歌词开关） |
+| `FloatingLyricColor` | 悬浮歌词预设颜色（天蓝、荧光绿、淡黄、淡紫、黑色） |
+| `LyricsColor` | 播放页面歌词颜色（白色 + 5种预设） |
+
+#### [`Enums.kt`](https://github.com/alen123222/6-Library/blob/main/app/src/main/java/com/alendawang/manhua/model/Enums.kt) — 全局枚举
+
+| 枚举 | 用途 | 枚举值 |
+|------|------|--------|
+| `MediaType` | 媒体类型 | `COMIC` 漫画、`NOVEL` 小说、`AUDIO` 音频 |
+| `DisplayMode` | 列表显示模式 | 列表(1列)、三列、四列、五列 |
+| `SortOption` | 排序方式 | 最近阅读、最早阅读、名称 A-Z、名称 Z-A |
+| `AudioDisplayMode` | 音频列表模式 | 纯单曲平铺、专辑卡片模式 |
+| `AppTheme` | 应用主题 | 落樱(粉)、暗黑(赛博)、水墨(灰)、抹茶(绿) |
+| `AppLanguage` | 应用语言 | 中文、English |
+| `ScanState` | 扫描进度状态 | isScanning / currentFolder / totalFound |
+
+#### [`Models.kt`](https://github.com/alen123222/6-Library/blob/main/app/src/main/java/com/alendawang/manhua/model/Models.kt) — 核心数据模型
+
+| 类/接口 | 用途 | 关键字段 |
+|---------|------|---------|
+| `MediaHistory` (接口) | 所有媒体的公共接口 | id, name, uriString, coverUriString, timestamp, isFavorite, isNsfw |
+| `ComicSourceType` | 漫画来源类型 | FOLDER / ZIP / RAR / PDF |
+| `ComicChapter` | 漫画章节 | name, uriString, sourceType, internalPath |
+| `ComicHistory` | 漫画历史记录 | 继承MediaHistory + chapters, lastReadIndex, lastReadChapterIndex, 缓存进度等 |
+| `NovelChapter` | 小说章节 | name, uriString, startIndex/endIndex, isEpubChapter, htmlContent |
+| `NovelHistory` | 小说历史记录 | 继承MediaHistory + chapters, lastReadChapterIndex, lastReadScrollPosition |
+| `AudioTrack` | 音频曲目 | name, uriString, duration, isFavorite |
+| `AudioHistory` | 音频历史记录 | 继承MediaHistory + tracks, lastPlayedIndex, lastPlayedPosition, customBackgroundUriString |
+
+---
+
+### 🧭 模块 2：导航路由 (`navigation/`)
+
+#### [`Screen.kt`](https://github.com/alen123222/6-Library/blob/main/app/src/main/java/com/alendawang/manhua/navigation/Screen.kt) — 路由定义
+
+采用 `sealed class` 自定义路由（非 Navigation Compose），配合 `Saver` 支持进程重建后的状态恢复。
+
+| 路由 | 参数 | 说明 |
+|------|------|------|
+| `Screen.Home` | 无 | 首页/书架 |
+| `Screen.Details` | mediaType, mediaId, highlightTrackIndex? | 媒体详情页 |
+| `Screen.ComicReader` | comicId, chapterIndex, initialScrollIndex | 漫画阅读器 |
+| `Screen.NovelReader` | novelId, chapterIndex, initialScrollPosition | 小说阅读器 |
+| `Screen.AudioPlayer` | audioId, trackIndex, initialPosition, showLyricsInitially | 音频播放器 |
+
+> ⚠️ **维护提示**: 路由状态保存/恢复逻辑在 `ScreenSaver` 中��动序列化为 `List<Any>`，新增路由参数时需同步更新 save/restore 两端。
+
+---
+
+### 🧠 模块 3：业务逻辑层 (`viewmodel/`)
+
+#### [`MainViewModel.kt`](https://github.com/alen123222/6-Library/blob/main/app/src/main/java/com/alendawang/manhua/viewmodel/MainViewModel.kt) — 全局状态管理中枢 (15KB)
+
+这是整个应用的**核心控制器**，管理所有全局状态和操作。功能分区如下：
+
+| 功能区 | 包含的状态/方法 |
+|--------|---------------|
+| **全局状态** | `currentTheme`、`currentScreen`、`currentMediaType` |
+| **漫画状态** | `comicHistoryList`、`sortOption`、`displayMode` |
+| **小说状态** | `novelHistoryList` |
+| **音频状态** | `audioHistoryList`、`audioDisplayMode` |
+| **搜索** | `isSearchActive`、`searchQuery` |
+| **隐藏模式 (NSFW)** | `isHiddenModeUnlocked`、密码相关对话框状态 |
+| **自定义背景** | `customHomeBackgroundUri`、`customHomeBackgroundAlpha` |
+| **扫描** | `scanState`、`startScan()`、`cancelScan()` |
+| **对话框** | 各种 `show*Dialog` 状态变量 |
+| **多选操作** | `isMultiSelectMode`、`selectedItems`、批量删除/收藏/隐藏 |
+| **CRUD 操作** | `updateComicHistory`、`deleteItem`、`updateCover`、`clearCurrentHistory` |
+| **主题/排序** | `setTheme()`、`nextTheme()`、`changeSortOption()`、`changeDisplayMode()` |
+
+#### [`NovelReaderViewModel.kt`](https://github.com/alen123222/6-Library/blob/main/app/src/main/java/com/alendawang/manhua/viewmodel/NovelReaderViewModel.kt) — 小说阅读器专用 ViewModel (9KB)
+
+独立管理小说阅读器的状态，包括：
+- 章节加载与切换
+- 分页计算
+- 阅读进度管理
+- 阅读器配置（字体、背景等）
+
+---
+
+### 🎨 模块 4：UI 层 (`ui/`)
+
+#### 4.1 页面级组件 (`ui/screens/`)
+
+| 文件 | 大小 | 功能 |
+|------|------|------|
+| [`HomeScreen.kt`](https://github.com/alen123222/6-Library/blob/main/app/src/main/java/com/alendawang/manhua/ui/screens/HomeScreen.kt) | 62KB | **首页/书架** — 最大的页面文件，包含：Tab切换(漫画/小说/音频)、网格/列表展示、搜索栏、扫描入口、多选模式、自定义背景显示、横屏布局适配等 |
+| [`DetailScreens.kt`](https://github.com/alen123222/6-Library/blob/main/app/src/main/java/com/alendawang/manhua/ui/screens/DetailScreens.kt) | 25KB | **详情页** — 展示漫画/小说/音频的详细信息、章节列表、封面管理、收藏/隐藏操作、进入阅读器入口 |
+| [`ReaderScreens.kt`](https://github.com/alen123222/6-Library/blob/main/app/src/main/java/com/alendawang/manhua/ui/screens/ReaderScreens.kt) | 45KB | **漫画阅读器** — 图片浏览（支持缩放/翻页）、章节切换、进度条、手势操作、横屏适配 |
+| [`NovelReaderScreen.kt`](https://github.com/alen123222/6-Library/blob/main/app/src/main/java/com/alendawang/manhua/ui/screens/NovelReaderScreen.kt) | 49KB | **小说阅读器** — 文本渲染、字体/排版/背景设置面板、章节导航、阅读进度保存、自定义背景+遮罩 |
+
+#### 4.2 可复用 UI 组件 (`ui/components/`)
+
+| 文件 | 大小 | 功能 |
+|------|------|------|
+| [`Cards.kt`](https://github.com/alen123222/6-Library/blob/main/app/src/main/java/com/alendawang/manhua/ui/components/Cards.kt) | 22KB | **卡片组件** — 漫画卡片、小说卡片、音频卡片（支持列表/网格模式），包含封面图、进度条、收藏标记等 |
+| [`CommonComponents.kt`](https://github.com/alen123222/6-Library/blob/main/app/src/main/java/com/alendawang/manhua/ui/components/CommonComponents.kt) | 7KB | **通用组件** — 顶部栏、底部导航、加载指示器等共享UI元素 |
+| [`Dialogs.kt`](https://github.com/alen123222/6-Library/blob/main/app/src/main/java/com/alendawang/manhua/ui/components/Dialogs.kt) | 36KB | **对话框集���** — 删除确认、密码输入、帮助说明、长按菜单、背景设置、歌词颜色选择等全部对话框 |
+| [`LyricView.kt`](https://github.com/alen123222/6-Library/blob/main/app/src/main/java/com/alendawang/manhua/ui/components/LyricView.kt) | 9KB | **歌词组件** — 同步滚动歌词显示，当前行高亮，自动跟随播放进度 |
+| [`MeteorSlider.kt`](https://github.com/alen123222/6-Library/blob/main/app/src/main/java/com/alendawang/manhua/ui/components/MeteorSlider.kt) | 11KB | **流星进度条** — 自定义Canvas绘制，流星尾迹动画效果，用于音频播放进度控制 |
+| [`VinylRecordView.kt`](https://github.com/alen123222/6-Library/blob/main/app/src/main/java/com/alendawang/manhua/ui/components/VinylRecordView.kt) | 6KB | **黑胶唱片** — 旋转动画的唱片组件，展示封面图片，用于音频播放器页面 |
+
+#### 4.3 主题系统 (`ui/theme/`)
+
+| 文件 | 功能 |
+|------|------|
+| [`AppColors.kt`](https://github.com/alen123222/6-Library/blob/main/app/src/main/java/com/alendawang/manhua/ui/theme/AppColors.kt) | 应用自定义颜色集（与四种主题对应的配色方案） |
+| [`Color.kt`](https://github.com/alen123222/6-Library/blob/main/app/src/main/java/com/alendawang/manhua/ui/theme/Color.kt) | 基础色值常量定义 |
+| [`Theme.kt`](https://github.com/alen123222/6-Library/blob/main/app/src/main/java/com/alendawang/manhua/ui/theme/Theme.kt) | Material 3 主题配置（暗色方案、动态主题适配） |
+| [`Type.kt`](https://github.com/alen123222/6-Library/blob/main/app/src/main/java/com/alendawang/manhua/ui/theme/Type.kt) | Typography 字体排版系统 |
+
+---
+
+### 🔧 模块 5：工具类 (`utils/`)
+
+| 文件 | 大小 | 功能详情 |
+|------|------|---------|
+| [`ScannerUtils.kt`](https://github.com/alen123222/6-Library/blob/main/app/src/main/java/com/alendawang/manhua/utils/ScannerUtils.kt) | 18KB | **文件扫描引擎** — 扫描本地文件夹，自动识别漫画(图片文件夹/ZIP/RAR)、小说(TXT/EPUB)、音频(MP3等)，使用 Flow 实现异步扫描，支持增量扫描 |
+| [`PreferencesManager.kt`](https://github.com/alen123222/6-Library/blob/main/app/src/main/java/com/alendawang/manhua/utils/PreferencesManager.kt) | 19KB | **持久化管理** — 使用 SharedPreferences + Gson 序列化存储所有数据：漫画/小说/音频历史、主题、排序方式、显示模式、密码、背景设置、阅读器配置、语言偏好等 |
+| [`ImageLoaderUtils.kt`](https://github.com/alen123222/6-Library/blob/main/app/src/main/java/com/alendawang/manhua/utils/ImageLoaderUtils.kt) | 27KB | **图片加载核心** — 自定义 Coil Fetcher/Keyer，支持从文件夹、ZIP/CBZ、RAR/CBR 压缩包中直接加载图片，无需解压 |
+| [`StringResources.kt`](https://github.com/alen123222/6-Library/blob/main/app/src/main/java/com/alendawang/manhua/utils/StringResources.kt) | 14KB | **多语言文本** — 中英双语字符串资源，非 Android strings.xml 方案，而是代码级字符串映射 |
+| [`EpubUtils.kt`](https://github.com/alen123222/6-Library/blob/main/app/src/main/java/com/alendawang/manhua/utils/EpubUtils.kt) | 13KB | **EPUB 解析** — 解析 EPUB 结构、提取章节列表、读取 HTML 内容转纯文本、提取封面图 |
+| [`NovelUtils.kt`](https://github.com/alen123222/6-Library/blob/main/app/src/main/java/com/alendawang/manhua/utils/NovelUtils.kt) | 6KB | **小说解析** — TXT 文件章节自动识别（基于正则匹配章节标题）、编码自动检测 (JUniversalChardet) |
+| [`Helpers.kt`](https://github.com/alen123222/6-Library/blob/main/app/src/main/java/com/alendawang/manhua/utils/Helpers.kt) | 5KB | **通用辅助** — 排序函数(applySort/applyNovelSort/applyAudioSort)、历史记录过滤(filterHistory)、时间格式化等 |
+| [`AudioMetadataUtils.kt`](https://github.com/alen123222/6-Library/blob/main/app/src/main/java/com/alendawang/manhua/utils/AudioMetadataUtils.kt) | 3KB | **音频元数据** — 提取MP3等音频文件的标题、艺术家、专辑、时长、内嵌封面 |
+| [`FileUtils.kt`](https://github.com/alen123222/6-Library/blob/main/app/src/main/java/com/alendawang/manhua/utils/FileUtils.kt) | 2KB | **文件工具** — URI 操作、文件名提取、MIME 类型判断 |
+| [`CacheUtils.kt`](https://github.com/alen123222/6-Library/blob/main/app/src/main/java/com/alendawang/manhua/utils/CacheUtils.kt) | 2KB | **缓存管理** — 漫画图片缓存清理（按章节/全部清理） |
+
+---
+
+### ⚙️ 模块 6：Android 服务 (根包)
+
+#### [`AudioPlaybackService.kt`](https://github.com/alen123222/6-Library/blob/main/app/src/main/java/com/alendawang/manhua/AudioPlaybackService.kt) — 后台音频播放 (22KB)
+
+| 功能 | 说明 |
+|------|------|
+| 播放核心 | 基于 Media3 / ExoPlayer 的前台服务 |
+| 通知控制 | 通知栏显示播放状态、封面，支持播放/暂停/上下曲 |
+| 播放列表管理 | 曲目列表加载、顺序/随机播放 |
+| 歌词解析 | LRC 歌词文件解析与同步 |
+| 进度广播 | 向 UI 层和悬浮歌词服务广播当前播放进度 |
+
+#### [`FloatingLyricsService.kt`](https://github.com/alen123222/6-Library/blob/main/app/src/main/java/com/alendawang/manhua/FloatingLyricsService.kt) — 悬浮歌词窗口 (14KB)
+
+| 功能 | 说明 |
+|------|------|
+| 悬浮窗 | 使用 WindowManager 创建全局悬浮窗 |
+| 歌词同步 | 接收 AudioPlaybackService 的进度广播，实时更新歌词 |
+| 可拖拽 | 支持手势拖拽移动位置 |
+| 自定义样式 | 可配置字号、颜色（对应 `FloatingLyricColor` 预设） |
+
+#### [`MainActivity.kt`](https://github.com/alen123222/6-Library/blob/main/app/src/main/java/com/alendawang/manhua/MainActivity.kt) — 应用入口 (114KB ⚠️)
+
+这是整个应用最大的文件，承担了**路由分发、权限管理、生命周期处理、音频控制绑定**等职责。
+
+| 功能区块 | 说明 |
+|----------|------|
+| 路由分发 | 根据 `currentScreen` 渲染对应页面 Composable |
+| 权限处理 | 存储权限(SAF)、悬浮窗权限、生物识别认证 |
+| 服务绑定 | 绑定 `AudioPlaybackService`，管理播放状态回调 |
+| ActivityResult | 文件夹选择(扫描用)、图片选择(封面/背景用) |
+| 系统栏控制 | 沉浸式体验，阅读器中隐藏系统栏 |
+
+> ⚠️ **维护提示**: `MainActivity.kt` 体量过大(114KB)，未来可考虑将路由分发、权限管理、音频绑定等逻辑抽出为独立的 Composable 或 Helper。
+
+---
+
+## 🔄 三、关键数据流
+
+```text
+用户操作
+  │
+  ▼
+┌──────────────┐     状态变更      ┌───────────────────┐
+│  UI 层        │ ◄──────────────── │  MainViewModel     │
+│  (Screens)    │ ──────────────► │  (状态管理中枢)     │
+└──────────────┘     调用方法      └───────────────────┘
+                                          │
+                                    读写数据 │
+                                          ▼
+                                  ┌──────────────────┐
+                                  │  Utils 层          │
+                                  │  PreferencesManager│ ← SharedPreferences
+                                  │  ScannerUtils      │ ← 文件系统扫描
+                                  │  ImageLoaderUtils   │ ← 图片加载
+                                  │  EpubUtils/NovelUtils│ ← 文本解析
+                                  └──────────────────┘
+```
+
+---
+
+## 🏷️ 四、关键技术点速查
+
+| 技术点 | 实现位置 | 说明 |
+|--------|---------|------|
+| 压缩包直读(ZIP/RAR) | `ImageLoaderUtils.kt` + `ScannerUtils.kt` | 使用 Junrar 和 java.util.zip 实现，无需解压到磁盘 |
+| 编码检测 | `NovelUtils.kt` | JUniversalChardet 自动识别 TXT 编码 |
+| LRC 歌词解析 | `AudioPlaybackService.kt` | 正则解析 `[mm:ss.xx]` 时间戳 |
+| 进程恢复 | `Screen.kt` (ScreenSaver) | Compose `rememberSaveable` + 自定义 Saver |
+| NSFW 隐藏模式 | `MainViewModel.kt` + `PreferencesManager.kt` | 密码保护，生物识别(Biometric)可选 |
+| 持久化方案 | `PreferencesManager.kt` | 全部使用 SharedPreferences + Gson JSON 序列化 |
+| 多语言 | `StringResources.kt` + `Enums.kt` (AppLanguage) | 代码级实现，中/英双语 |
+| 四种主题 | `Enums.kt` (AppTheme) + `ui/theme/` | 落樱/暗黑/水墨/抹茶，支持一键切换循环 |
+
+---
+
+## 📝 五、维护建议
+
+1. **`MainActivity.kt` 亟需拆分** — 114KB 的超大文件是最大的维护隐患，建议将路由逻辑、权限处理、服务绑定分别抽出
+2. **`HomeScreen.kt` (62KB)** — 同样过大，可考虑按 Tab 内容（漫画Tab、小说Tab、音频Tab）拆分为独立 Composable
+3. **持久化升级** — 当前使用 SharedPreferences 存储全部数据（包括完整列表JSON），数据量增大后性能会下降，可考虑迁移至 Room 数据库
+4. **`viewmodel/mr.jpg`** — 代码目录中存在一张图片文件，应移至 `res/` 资源目录
+5. **签名信息** — `app/build.gradle.kts` 中硬编码了签名密码，有安全风险

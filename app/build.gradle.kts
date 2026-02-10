@@ -7,6 +7,7 @@ plugins {
     // 确保你的 libs.versions.toml 里有 compose 插件的定义
     // 如果没有，你可能需要用 id("org.jetbrains.kotlin.plugin.compose????")
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -97,6 +98,11 @@ dependencies {
         // 排除可能在Android上不兼容的依赖
         exclude(group = "commons-logging", module = "commons-logging")
     }
+
+    // Room 数据库
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
 
     // 4. 测试依赖
     testImplementation(libs.junit)

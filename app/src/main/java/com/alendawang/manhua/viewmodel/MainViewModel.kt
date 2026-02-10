@@ -11,9 +11,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.alendawang.manhua.data.AppDatabase
+import com.alendawang.manhua.data.MediaRepository
 import com.alendawang.manhua.model.*
 import com.alendawang.manhua.navigation.Screen
 import com.alendawang.manhua.utils.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
@@ -25,10 +28,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     
     private val context: Context get() = getApplication()
     
-    // 启动时清理所有漫画图片缓存
+    // Room 数据库仓库
+    private val repository = MediaRepository(AppDatabase.getInstance(application))
+    
+    // 启动时清理所有漫画图片缓存 + 迁移数据 + 加载数据
     init {
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+        viewModelScope.launch(Dispatchers.IO) {
             clearAllComicImageCaches(context)
+        }
+        viewModelScope.launch {
+            // 先执行 SP → Room 一次性迁移
+            repository.migrateFromSharedPreferencesIfNeeded(context)
+            // 然后从 Room 加载数据
+            comicHistoryList = applySort(repository.loadAllComics(), sortOption)
+            novelHistoryList = applyNovelSort(repository.loadAllNovels(), sortOption)
+            audioHistoryList = applyAudioSort(repository.loadAllAudio(), sortOption)
         }
     }
     
@@ -41,17 +55,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // --- 漫画状态 ---
     var sortOption by mutableStateOf(loadSortOption(context))
         private set
-    var comicHistoryList by mutableStateOf(applySort(loadComicHistory(context), sortOption))
+    var comicHistoryList by mutableStateOf<List<ComicHistory>>(emptyList())
         private set
     var displayMode by mutableStateOf(loadDisplayMode(context))
         private set
     
     // --- 小说状态 ---
-    var novelHistoryList by mutableStateOf(applyNovelSort(loadNovelHistory(context), sortOption))
+    var novelHistoryList by mutableStateOf<List<NovelHistory>>(emptyList())
         private set
     
     // --- 音频状态 ---
-    var audioHistoryList by mutableStateOf(applyAudioSort(loadAudioHistory(context), sortOption))
+    var audioHistoryList by mutableStateOf<List<AudioHistory>>(emptyList())
         private set
     var audioDisplayMode by mutableStateOf(loadAudioDisplayMode(context))
         private set
@@ -113,13 +127,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun updateNovelHistory(updated: List<NovelHistory>) {
         val sorted = applyNovelSort(updated, sortOption)
         novelHistoryList = sorted
-        saveNovelToPrefs(context, sorted)
+        viewModelScope.launch { repository.saveAllNovels(sorted) }
     }
     
     fun updateAudioHistory(updated: List<AudioHistory>) {
         val sorted = applyAudioSort(updated, sortOption)
         audioHistoryList = sorted
-        saveAudioToPrefs(context, sorted)
+        viewModelScope.launch { repository.saveAllAudio(sorted) }
     }
     
     fun updateNovelItem(id: String, transform: (NovelHistory) -> NovelHistory) {
@@ -131,11 +145,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     fun updateComicHistory(updated: ComicHistory) {
-        comicHistoryList = updateComicHistoryAndSort(context, comicHistoryList, updated, sortOption)
+        // 更新内存列表
+        val updatedList = comicHistoryList.toMutableList()
+        val index = updatedList.indexOfFirst { it.id == updated.id }
+        if (index != -1) {
+            val oldItem = updatedList[index]
+            updatedList[index] = updated.copy(
+                isNsfw = if (updated.timestamp == oldItem.timestamp) updated.isNsfw 
+                         else (if (updated.isNsfw) true else oldItem.isNsfw)
+            )
+        } else {
+            updatedList.add(updated)
+        }
+        comicHistoryList = applySort(updatedList, sortOption)
+        viewModelScope.launch { repository.saveAllComics(comicHistoryList) }
     }
     
     fun deleteComic(id: String) {
-        comicHistoryList = deleteComicHistory(context, comicHistoryList, id)
+        comicHistoryList = comicHistoryList.filter { it.id != id }
+        viewModelScope.launch { repository.deleteComic(id) }
     }
     
     // 退出漫画阅读器时清理当前章节的缓存 (所有类型)
@@ -229,7 +257,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             if (scanState.isScanning) scanState = scanState.copy(currentFolder = name)
                         }.collect { comic ->
                             // 无论是新增还是更新，都添加/替换到列表
-                            comicHistoryList = updateComicHistoryAndSort(context, comicHistoryList, comic, sortOption)
+                            updateComicHistory(comic)
                             if (scanState.isScanning) scanState = scanState.copy(totalFound = scanState.totalFound + 1)
                         }
                     }
@@ -322,7 +350,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         when (currentMediaType) {
             MediaType.COMIC -> {
                 comicHistoryList = emptyList()
-                saveComicToPrefs(context, emptyList())
+                viewModelScope.launch { repository.clearAllComics() }
             }
             MediaType.NOVEL -> {
                 updateNovelHistory(emptyList())
@@ -355,9 +383,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun deleteSelectedItems() {
         when (currentMediaType) {
             MediaType.COMIC -> {
-                selectedItems.forEach { id ->
-                    comicHistoryList = deleteComicHistory(context, comicHistoryList, id)
-                }
+                val idsToDelete = selectedItems.toList()
+                comicHistoryList = comicHistoryList.filter { it.id !in selectedItems }
+                viewModelScope.launch { repository.deleteComicsByIds(idsToDelete) }
             }
             MediaType.NOVEL -> {
                 updateNovelHistory(novelHistoryList.filter { it.id !in selectedItems })
@@ -375,7 +403,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 comicHistoryList = comicHistoryList.map { comic ->
                     if (comic.id in selectedItems) comic.copy(isFavorite = true) else comic
                 }
-                saveComicToPrefs(context, comicHistoryList)
+                viewModelScope.launch { repository.saveAllComics(comicHistoryList) }
             }
             MediaType.NOVEL -> {
                 updateNovelHistory(novelHistoryList.map { novel ->
@@ -397,7 +425,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 comicHistoryList = comicHistoryList.map { comic ->
                     if (comic.id in selectedItems) comic.copy(isNsfw = true) else comic
                 }
-                saveComicToPrefs(context, comicHistoryList)
+                viewModelScope.launch { repository.saveAllComics(comicHistoryList) }
             }
             MediaType.NOVEL -> {
                 updateNovelHistory(novelHistoryList.map { novel ->

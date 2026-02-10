@@ -348,271 +348,50 @@ fun HomeScreen(
             } else {
                 // Content for the current module
                 when (currentMediaType) {
-                MediaType.COMIC -> {
-                    val comicList = historyList.filterIsInstance<ComicHistory>()
-                    // 优化 1: 使用 stable key 并确保缓存稳定
-                    val cachedComicList = remember(comicList.hashCode()) { comicList }
-                    val cardAlpha = if (customBackgroundUri != null) customBackgroundAlpha.coerceAtMost(0.7f) else 1f
-                    
-                    // 优化 2: 检测滚动状态
-                    val lazyGridState = rememberLazyGridState()
-                    val isScrolling = lazyGridState.isScrollInProgress
-                    
-                    LazyVerticalGrid(
-                        state = lazyGridState,
-                        columns = if (displayMode == DisplayMode.ListView) GridCells.Fixed(1) else GridCells.Fixed(displayMode.columnCount),
-                        contentPadding = PaddingValues(6.dp),
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        items(cachedComicList, key = { it.id }) { history ->
-                            val isSelected = selectedItems.contains(history.id)
-                            Box {
-                                if (displayMode == DisplayMode.ListView)
-                                    ComicHistoryItemListCard(history, currentTheme, { onHistoryItemClick(history) }, { onHistoryItemLongClick(history) }, cardAlpha, isScrolling)
-                                else
-                                    ComicHistoryItemGridCard(history, currentTheme, { onHistoryItemClick(history) }, { onHistoryItemLongClick(history) }, cardAlpha, isScrolling)
-                                // 多选模式下的选中指示器
-                                if (isMultiSelectMode) {
-                                    Box(
-                                        modifier = Modifier
-                                            .matchParentSize()
-                                            .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else Color.Transparent)
-                                            .border(if (isSelected) 3.dp else 0.dp, if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent, RoundedCornerShape(12.dp))
-                                    )
-                                    Box(
-                                        modifier = Modifier
-                                            .align(Alignment.TopEnd)
-                                            .padding(8.dp)
-                                            .size(24.dp)
-                                            .background(if (isSelected) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.7f), CircleShape)
-                                            .border(2.dp, if (isSelected) MaterialTheme.colorScheme.primary else Color.Gray, CircleShape),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        if (isSelected) {
-                                            Icon(Icons.Rounded.Check, null, tint = Color.White, modifier = Modifier.size(16.dp))
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        item(span = { GridItemSpan(if (displayMode == DisplayMode.ListView) 1 else displayMode.columnCount) }) {
-                            Spacer(Modifier.height(32.dp))
-                        }
+                    MediaType.COMIC -> {
+                        ComicTabContent(
+                            comicList = historyList.filterIsInstance<ComicHistory>(),
+                            currentTheme = currentTheme,
+                            displayMode = displayMode,
+                            cardAlpha = if (customBackgroundUri != null) customBackgroundAlpha.coerceAtMost(0.7f) else 1f,
+                            isMultiSelectMode = isMultiSelectMode,
+                            selectedItems = selectedItems,
+                            onHistoryItemClick = { onHistoryItemClick(it) },
+                            onHistoryItemLongClick = { onHistoryItemLongClick(it) }
+                        )
                     }
-                }
-                MediaType.NOVEL -> {
-                    val novelList = historyList.filterIsInstance<NovelHistory>()
-                    // 优化 1: 使用 stable key 并确保缓存稳定
-                    val cachedNovelList = remember(novelList.hashCode()) { novelList }
-                    val cardAlpha = if (customBackgroundUri != null) customBackgroundAlpha.coerceAtMost(0.7f) else 1f
-                    
-                    val lazyGridState = rememberLazyGridState()
-                    LazyVerticalGrid(
-                        state = lazyGridState,
-                        columns = if (displayMode == DisplayMode.ListView) GridCells.Fixed(1) else GridCells.Fixed(displayMode.columnCount),
-                        contentPadding = PaddingValues(6.dp),
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        items(cachedNovelList, key = { it.id }) { history ->
-                            val isSelected = selectedItems.contains(history.id)
-                            Box {
-                                if (displayMode == DisplayMode.ListView)
-                                    NovelHistoryItemCard(history, currentTheme, { onHistoryItemClick(history) }, { onHistoryItemLongClick(history) }, cardAlpha)
-                                else
-                                    NovelHistoryItemGridCard(history, currentTheme, { onHistoryItemClick(history) }, { onHistoryItemLongClick(history) }, cardAlpha)
-                                // 多选模式下的选中指示器
-                                if (isMultiSelectMode) {
-                                    Box(
-                                        modifier = Modifier
-                                            .matchParentSize()
-                                            .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else Color.Transparent)
-                                            .border(if (isSelected) 3.dp else 0.dp, if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent, RoundedCornerShape(12.dp))
-                                    )
-                                    Box(
-                                        modifier = Modifier
-                                            .align(Alignment.TopEnd)
-                                            .padding(8.dp)
-                                            .size(24.dp)
-                                            .background(if (isSelected) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.7f), CircleShape)
-                                            .border(2.dp, if (isSelected) MaterialTheme.colorScheme.primary else Color.Gray, CircleShape),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        if (isSelected) {
-                                            Icon(Icons.Rounded.Check, null, tint = Color.White, modifier = Modifier.size(16.dp))
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        item(span = { GridItemSpan(if (displayMode == DisplayMode.ListView) 1 else displayMode.columnCount) }) {
-                            Spacer(Modifier.height(32.dp))
-                        }
+                    MediaType.NOVEL -> {
+                        NovelTabContent(
+                            novelList = historyList.filterIsInstance<NovelHistory>(),
+                            currentTheme = currentTheme,
+                            displayMode = displayMode,
+                            cardAlpha = if (customBackgroundUri != null) customBackgroundAlpha.coerceAtMost(0.7f) else 1f,
+                            isMultiSelectMode = isMultiSelectMode,
+                            selectedItems = selectedItems,
+                            onHistoryItemClick = { onHistoryItemClick(it) },
+                            onHistoryItemLongClick = { onHistoryItemLongClick(it) }
+                        )
                     }
-                }
-                MediaType.AUDIO -> {
-                    val audioList = historyList.filterIsInstance<AudioHistory>()
-                    val cachedAudioList = remember(audioList.hashCode()) { audioList }
-                    val cardAlpha = if (customBackgroundUri != null) customBackgroundAlpha.coerceAtMost(0.7f) else 1f
-                    
-                    val audioGridState = rememberLazyGridState()
-                    
-                    // 判断是否在搜索模式：搜索时显示匹配的单曲
-                    val isSearching = searchQuery.isNotBlank() && audioSearchMatchingTracks.isNotEmpty()
-                    
-                    // 搜索模式或单曲模式：显示单曲列表
-                    if (isSearching || audioDisplayMode == AudioDisplayMode.SINGLES) {
-                        // 创建显示的曲目列表
-                        val tracksToShow = remember(cachedAudioList.hashCode(), searchQuery, audioSearchMatchingTracks) {
-                            if (isSearching) {
-                                // 搜索时：只显示匹配的歌曲
-                                cachedAudioList.flatMap { audio ->
-                                    val matchingIndices = audioSearchMatchingTracks[audio.id] ?: emptyList()
-                                    matchingIndices.mapNotNull { index ->
-                                        audio.tracks.getOrNull(index)?.let { track ->
-                                            Triple(audio, index, track)
-                                        }
-                                    }
-                                }
-                            } else {
-                                // 单曲模式：显示所有歌曲
-                                cachedAudioList.flatMap { audio ->
-                                    audio.tracks.mapIndexed { index, track -> Triple(audio, index, track) }
-                                }
-                            }
-                        }
-                        
-                        LazyVerticalGrid(
-                            state = audioGridState,
-                            columns = if (displayMode == DisplayMode.ListView) GridCells.Fixed(1) else GridCells.Fixed(displayMode.columnCount),
-                            contentPadding = PaddingValues(6.dp),
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            items(tracksToShow, key = { "${it.first.id}_${it.second}" }) { (audio, trackIndex, track) ->
-                                val singleTrackAudio = AudioHistory(
-                                    id = track.uriString,
-                                    name = track.name,
-                                    uriString = audio.uriString,
-                                    coverUriString = audio.coverUriString,
-                                    timestamp = audio.timestamp,
-                                    tracks = listOf(track),
-                                    lastPlayedIndex = 0,
-                                    lastPlayedPosition = 0,
-                                    isFavorite = track.isFavorite,
-                                    isNsfw = audio.isNsfw
-                                )
-                                val isSelected = selectedItems.contains(audio.id)
-                                Box {
-                                    if (displayMode == DisplayMode.ListView)
-                                        AudioHistoryItemCard(
-                                            singleTrackAudio,
-                                            currentTheme,
-                                            onClick = {
-                                                // 点击行为根据显示模式决定
-                                                onAudioTrackClick(audio, trackIndex)
-                                            },
-                                            onLongClick = { onAudioTrackLongClick(audio, trackIndex) },
-                                            cardAlpha,
-                                            showFavorite = true
-                                        )
-                                    else
-                                        AudioHistoryItemGridCard(
-                                            singleTrackAudio,
-                                            currentTheme,
-                                            onClick = {
-                                                // 点击行为根据显示模式决定
-                                                onAudioTrackClick(audio, trackIndex)
-                                            },
-                                            onLongClick = { onAudioTrackLongClick(audio, trackIndex) },
-                                            cardAlpha,
-                                            showFavorite = true
-                                        )
-                                    if (isMultiSelectMode) {
-                                        Box(
-                                            modifier = Modifier
-                                                .matchParentSize()
-                                                .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else Color.Transparent)
-                                                .border(if (isSelected) 3.dp else 0.dp, if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent, RoundedCornerShape(12.dp))
-                                        )
-                                        Box(
-                                            modifier = Modifier
-                                                .align(Alignment.TopEnd)
-                                                .padding(8.dp)
-                                                .size(24.dp)
-                                                .background(if (isSelected) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.7f), CircleShape)
-                                                .border(2.dp, if (isSelected) MaterialTheme.colorScheme.primary else Color.Gray, CircleShape),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            if (isSelected) {
-                                                Icon(Icons.Rounded.Check, null, tint = Color.White, modifier = Modifier.size(16.dp))
-                                            }
-                                        }
-                                    }
-                                    // Playing indicator
-                                    val isCurrentlyPlaying = isAudioPlaying && 
-                                        currentPlayingAudioId == audio.id && 
-                                        currentPlayingTrackIndex == trackIndex
-                                    if (isCurrentlyPlaying && !isMultiSelectMode) {
-                                        Box(
-                                            modifier = Modifier
-                                                .align(Alignment.TopStart)
-                                                .padding(8.dp)
-                                                .size(28.dp)
-                                                .background(MaterialTheme.colorScheme.primary, CircleShape),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            BouncingMusicNote(modifier = Modifier.size(18.dp))
-                                        }
-                                    }
-                                }
-                            }
-                            item(span = { GridItemSpan(if (displayMode == DisplayMode.ListView) 1 else displayMode.columnCount) }) {
-                                Spacer(Modifier.height(32.dp))
-                            }
-                        }
-                    } else {
-                        // 专辑模式（非搜索）：显示专辑列表
-                        LazyVerticalGrid(
-                            state = audioGridState,
-                            columns = if (displayMode == DisplayMode.ListView) GridCells.Fixed(1) else GridCells.Fixed(displayMode.columnCount),
-                            contentPadding = PaddingValues(6.dp),
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            items(cachedAudioList, key = { it.id }) { history ->
-                                val isSelected = selectedItems.contains(history.id)
-                                Box {
-                                    if (displayMode == DisplayMode.ListView)
-                                        AudioHistoryItemCard(history, currentTheme, { onHistoryItemClick(history) }, { onHistoryItemLongClick(history) }, cardAlpha, showFavorite = false)
-                                    else
-                                        AudioHistoryItemGridCard(history, currentTheme, { onHistoryItemClick(history) }, { onHistoryItemLongClick(history) }, cardAlpha, showFavorite = false)
-                                    if (isMultiSelectMode) {
-                                        Box(
-                                            modifier = Modifier
-                                                .matchParentSize()
-                                                .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else Color.Transparent)
-                                                .border(if (isSelected) 3.dp else 0.dp, if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent, RoundedCornerShape(12.dp))
-                                        )
-                                        Box(
-                                            modifier = Modifier
-                                                .align(Alignment.TopEnd)
-                                                .padding(8.dp)
-                                                .size(24.dp)
-                                                .background(if (isSelected) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.7f), CircleShape)
-                                                .border(2.dp, if (isSelected) MaterialTheme.colorScheme.primary else Color.Gray, CircleShape),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            if (isSelected) {
-                                                Icon(Icons.Rounded.Check, null, tint = Color.White, modifier = Modifier.size(16.dp))
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            item(span = { GridItemSpan(if (displayMode == DisplayMode.ListView) 1 else displayMode.columnCount) }) {
-                                Spacer(Modifier.height(32.dp))
-                            }
-                        }
+                    MediaType.AUDIO -> {
+                        AudioTabContent(
+                            audioList = historyList.filterIsInstance<AudioHistory>(),
+                            currentTheme = currentTheme,
+                            displayMode = displayMode,
+                            audioDisplayMode = audioDisplayMode,
+                            cardAlpha = if (customBackgroundUri != null) customBackgroundAlpha.coerceAtMost(0.7f) else 1f,
+                            isMultiSelectMode = isMultiSelectMode,
+                            selectedItems = selectedItems,
+                            isAudioPlaying = isAudioPlaying,
+                            currentPlayingAudioId = currentPlayingAudioId,
+                            currentPlayingTrackIndex = currentPlayingTrackIndex,
+                            searchQuery = searchQuery,
+                            audioSearchMatchingTracks = audioSearchMatchingTracks,
+                            onHistoryItemClick = { onHistoryItemClick(it) },
+                            onHistoryItemLongClick = { onHistoryItemLongClick(it) },
+                            onAudioTrackClick = onAudioTrackClick,
+                            onAudioTrackLongClick = onAudioTrackLongClick
+                        )
                     }
-                }
                 }
             }
         }
@@ -815,230 +594,51 @@ fun RowScope.LandscapeContentArea(
                 }
             } else {
                 val cardAlpha = if (customBackgroundUri != null) customBackgroundAlpha.coerceAtMost(0.7f) else 1f
-                val lazyGridState = rememberLazyGridState()
                 
                 when (currentMediaType) {
                     MediaType.COMIC -> {
-                        val comicList = historyList.filterIsInstance<ComicHistory>()
-                        val cachedComicList = remember(comicList.hashCode()) { comicList }
-                        val isScrolling = lazyGridState.isScrollInProgress
-                        
-                        LazyVerticalGrid(
-                            state = lazyGridState,
-                            columns = if (displayMode == DisplayMode.ListView) GridCells.Fixed(1) else GridCells.Fixed(displayMode.columnCount),
-                            contentPadding = PaddingValues(6.dp),
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            items(cachedComicList, key = { it.id }) { history ->
-                                val isSelected = selectedItems.contains(history.id)
-                                Box {
-                                    if (displayMode == DisplayMode.ListView)
-                                        ComicHistoryItemListCard(history, currentTheme, { onHistoryItemClick(history) }, { onHistoryItemLongClick(history) }, cardAlpha, isScrolling)
-                                    else
-                                        ComicHistoryItemGridCard(history, currentTheme, { onHistoryItemClick(history) }, { onHistoryItemLongClick(history) }, cardAlpha, isScrolling)
-                                    if (isMultiSelectMode) {
-                                        Box(
-                                            modifier = Modifier
-                                                .matchParentSize()
-                                                .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else Color.Transparent)
-                                                .border(if (isSelected) 3.dp else 0.dp, if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent, RoundedCornerShape(12.dp))
-                                        )
-                                        Box(
-                                            modifier = Modifier
-                                                .align(Alignment.TopEnd)
-                                                .padding(8.dp)
-                                                .size(24.dp)
-                                                .background(if (isSelected) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.7f), CircleShape)
-                                                .border(2.dp, if (isSelected) MaterialTheme.colorScheme.primary else Color.Gray, CircleShape),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            if (isSelected) {
-                                                Icon(Icons.Rounded.Check, null, tint = Color.White, modifier = Modifier.size(16.dp))
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            item(span = { GridItemSpan(if (displayMode == DisplayMode.ListView) 1 else displayMode.columnCount) }) {
-                                Spacer(Modifier.height(32.dp))
-                            }
-                        }
+                        ComicTabContent(
+                            comicList = historyList.filterIsInstance<ComicHistory>(),
+                            currentTheme = currentTheme,
+                            displayMode = displayMode,
+                            cardAlpha = cardAlpha,
+                            isMultiSelectMode = isMultiSelectMode,
+                            selectedItems = selectedItems,
+                            onHistoryItemClick = { onHistoryItemClick(it) },
+                            onHistoryItemLongClick = { onHistoryItemLongClick(it) }
+                        )
                     }
                     MediaType.NOVEL -> {
-                        val novelList = historyList.filterIsInstance<NovelHistory>()
-                        val cachedNovelList = remember(novelList.hashCode()) { novelList }
-                        
-                        LazyVerticalGrid(
-                            state = lazyGridState,
-                            columns = if (displayMode == DisplayMode.ListView) GridCells.Fixed(1) else GridCells.Fixed(displayMode.columnCount),
-                            contentPadding = PaddingValues(6.dp),
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            items(cachedNovelList, key = { it.id }) { history ->
-                                val isSelected = selectedItems.contains(history.id)
-                                Box {
-                                    if (displayMode == DisplayMode.ListView)
-                                        NovelHistoryItemCard(history, currentTheme, { onHistoryItemClick(history) }, { onHistoryItemLongClick(history) }, cardAlpha)
-                                    else
-                                        NovelHistoryItemGridCard(history, currentTheme, { onHistoryItemClick(history) }, { onHistoryItemLongClick(history) }, cardAlpha)
-                                    if (isMultiSelectMode) {
-                                        Box(
-                                            modifier = Modifier
-                                                .matchParentSize()
-                                                .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else Color.Transparent)
-                                                .border(if (isSelected) 3.dp else 0.dp, if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent, RoundedCornerShape(12.dp))
-                                        )
-                                        Box(
-                                            modifier = Modifier
-                                                .align(Alignment.TopEnd)
-                                                .padding(8.dp)
-                                                .size(24.dp)
-                                                .background(if (isSelected) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.7f), CircleShape)
-                                                .border(2.dp, if (isSelected) MaterialTheme.colorScheme.primary else Color.Gray, CircleShape),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            if (isSelected) {
-                                                Icon(Icons.Rounded.Check, null, tint = Color.White, modifier = Modifier.size(16.dp))
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            item(span = { GridItemSpan(if (displayMode == DisplayMode.ListView) 1 else displayMode.columnCount) }) {
-                                Spacer(Modifier.height(32.dp))
-                            }
-                        }
+                        NovelTabContent(
+                            novelList = historyList.filterIsInstance<NovelHistory>(),
+                            currentTheme = currentTheme,
+                            displayMode = displayMode,
+                            cardAlpha = cardAlpha,
+                            isMultiSelectMode = isMultiSelectMode,
+                            selectedItems = selectedItems,
+                            onHistoryItemClick = { onHistoryItemClick(it) },
+                            onHistoryItemLongClick = { onHistoryItemLongClick(it) }
+                        )
                     }
                     MediaType.AUDIO -> {
-                        val audioList = historyList.filterIsInstance<AudioHistory>()
-                        val cachedAudioList = remember(audioList.hashCode()) { audioList }
-                        val isSearching = searchQuery.isNotBlank() && audioSearchMatchingTracks.isNotEmpty()
-                        
-                        if (isSearching || audioDisplayMode == AudioDisplayMode.SINGLES) {
-                            val tracksToShow = remember(cachedAudioList.hashCode(), searchQuery, audioSearchMatchingTracks) {
-                                if (isSearching) {
-                                    cachedAudioList.flatMap { audio ->
-                                        val matchingIndices = audioSearchMatchingTracks[audio.id] ?: emptyList()
-                                        matchingIndices.mapNotNull { index ->
-                                            audio.tracks.getOrNull(index)?.let { track ->
-                                                Triple(audio, index, track)
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    cachedAudioList.flatMap { audio ->
-                                        audio.tracks.mapIndexed { index, track -> Triple(audio, index, track) }
-                                    }
-                                }
-                            }
-                            
-                            LazyVerticalGrid(
-                                state = lazyGridState,
-                                columns = if (displayMode == DisplayMode.ListView) GridCells.Fixed(1) else GridCells.Fixed(displayMode.columnCount),
-                                contentPadding = PaddingValues(6.dp),
-                                modifier = Modifier.fillMaxSize()
-                            ) {
-                                items(tracksToShow, key = { "${it.first.id}_${it.second}" }) { (audio, trackIndex, track) ->
-                                    val singleTrackAudio = AudioHistory(
-                                        id = track.uriString,
-                                        name = track.name,
-                                        uriString = audio.uriString,
-                                        coverUriString = audio.coverUriString,
-                                        timestamp = audio.timestamp,
-                                        tracks = listOf(track),
-                                        lastPlayedIndex = 0,
-                                        lastPlayedPosition = 0,
-                                        isFavorite = track.isFavorite,
-                                        isNsfw = audio.isNsfw
-                                    )
-                                    val isSelected = selectedItems.contains(audio.id)
-                                    Box {
-                                        if (displayMode == DisplayMode.ListView)
-                                            AudioHistoryItemCard(singleTrackAudio, currentTheme, { onAudioTrackClick(audio, trackIndex) }, { onAudioTrackLongClick(audio, trackIndex) }, cardAlpha, showFavorite = true)
-                                        else
-                                            AudioHistoryItemGridCard(singleTrackAudio, currentTheme, { onAudioTrackClick(audio, trackIndex) }, { onAudioTrackLongClick(audio, trackIndex) }, cardAlpha, showFavorite = true)
-                                        if (isMultiSelectMode) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .matchParentSize()
-                                                    .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else Color.Transparent)
-                                                    .border(if (isSelected) 3.dp else 0.dp, if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent, RoundedCornerShape(12.dp))
-                                            )
-                                            Box(
-                                                modifier = Modifier
-                                                    .align(Alignment.TopEnd)
-                                                    .padding(8.dp)
-                                                    .size(24.dp)
-                                                    .background(if (isSelected) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.7f), CircleShape)
-                                                    .border(2.dp, if (isSelected) MaterialTheme.colorScheme.primary else Color.Gray, CircleShape),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                if (isSelected) {
-                                                    Icon(Icons.Rounded.Check, null, tint = Color.White, modifier = Modifier.size(16.dp))
-                                                }
-                                            }
-                                        }
-                                        val isCurrentlyPlaying = isAudioPlaying && currentPlayingAudioId == audio.id && currentPlayingTrackIndex == trackIndex
-                                        if (isCurrentlyPlaying && !isMultiSelectMode) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .align(Alignment.TopStart)
-                                                    .padding(8.dp)
-                                                    .size(28.dp)
-                                                    .background(MaterialTheme.colorScheme.primary, CircleShape),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                BouncingMusicNote(modifier = Modifier.size(18.dp))
-                                            }
-                                        }
-                                    }
-                                }
-                                item(span = { GridItemSpan(if (displayMode == DisplayMode.ListView) 1 else displayMode.columnCount) }) {
-                                    Spacer(Modifier.height(32.dp))
-                                }
-                            }
-                        } else {
-                            LazyVerticalGrid(
-                                state = lazyGridState,
-                                columns = if (displayMode == DisplayMode.ListView) GridCells.Fixed(1) else GridCells.Fixed(displayMode.columnCount),
-                                contentPadding = PaddingValues(6.dp),
-                                modifier = Modifier.fillMaxSize()
-                            ) {
-                                items(cachedAudioList, key = { it.id }) { history ->
-                                    val isSelected = selectedItems.contains(history.id)
-                                    Box {
-                                        if (displayMode == DisplayMode.ListView)
-                                            AudioHistoryItemCard(history, currentTheme, { onHistoryItemClick(history) }, { onHistoryItemLongClick(history) }, cardAlpha, showFavorite = false)
-                                        else
-                                            AudioHistoryItemGridCard(history, currentTheme, { onHistoryItemClick(history) }, { onHistoryItemLongClick(history) }, cardAlpha, showFavorite = false)
-                                        if (isMultiSelectMode) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .matchParentSize()
-                                                    .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else Color.Transparent)
-                                                    .border(if (isSelected) 3.dp else 0.dp, if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent, RoundedCornerShape(12.dp))
-                                            )
-                                            Box(
-                                                modifier = Modifier
-                                                    .align(Alignment.TopEnd)
-                                                    .padding(8.dp)
-                                                    .size(24.dp)
-                                                    .background(if (isSelected) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.7f), CircleShape)
-                                                    .border(2.dp, if (isSelected) MaterialTheme.colorScheme.primary else Color.Gray, CircleShape),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                if (isSelected) {
-                                                    Icon(Icons.Rounded.Check, null, tint = Color.White, modifier = Modifier.size(16.dp))
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                                item(span = { GridItemSpan(if (displayMode == DisplayMode.ListView) 1 else displayMode.columnCount) }) {
-                                    Spacer(Modifier.height(32.dp))
-                                }
-                            }
-                        }
+                        AudioTabContent(
+                            audioList = historyList.filterIsInstance<AudioHistory>(),
+                            currentTheme = currentTheme,
+                            displayMode = displayMode,
+                            audioDisplayMode = audioDisplayMode,
+                            cardAlpha = cardAlpha,
+                            isMultiSelectMode = isMultiSelectMode,
+                            selectedItems = selectedItems,
+                            isAudioPlaying = isAudioPlaying,
+                            currentPlayingAudioId = currentPlayingAudioId,
+                            currentPlayingTrackIndex = currentPlayingTrackIndex,
+                            searchQuery = searchQuery,
+                            audioSearchMatchingTracks = audioSearchMatchingTracks,
+                            onHistoryItemClick = { onHistoryItemClick(it) },
+                            onHistoryItemLongClick = { onHistoryItemLongClick(it) },
+                            onAudioTrackClick = onAudioTrackClick,
+                            onAudioTrackLongClick = onAudioTrackLongClick
+                        )
                     }
                 }
             }
