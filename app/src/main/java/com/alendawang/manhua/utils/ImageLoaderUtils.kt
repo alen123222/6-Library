@@ -21,50 +21,90 @@ import com.github.junrar.Archive
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
 
-// --- 封面压缩配置 ---
-private const val COVER_WIDTH = 300
-private const val COVER_HEIGHT = 450  // 2:3 比例
-private const val COVER_QUALITY = 80  // WebP 质量
+// --- 封面压缩配置（分档） ---
+data class CoverConfig(
+    val width: Int,
+    val height: Int,
+    val quality: Int,
+    val skipResize: Boolean = false  // true = 仅转WebP不缩放，但cap最大分辨率
+)
 
-// --- 压缩并保存封面图片 (2:3 比例, WebP 格式) ---
-private fun compressAndSaveCover(inputStream: InputStream, outputFile: File): Boolean {
+/**
+ * 根据资源库总数量获取封面压缩配置
+ * ≤100: 高画质 (1500×2250, Q92)
+ * 101-200: 平衡画质 (900×1350, Q88)
+ * >200: 节省空间 (450×675, Q80)
+ */
+fun getCoverConfig(totalItems: Int): CoverConfig = when {
+    totalItems <= 100 -> CoverConfig(1500, 2250, 92, skipResize = true)
+    totalItems <= 200 -> CoverConfig(900, 1350, 88)
+    else -> CoverConfig(450, 675, 80)
+}
+
+// --- 压缩并保存封面图片 (WebP 格式, 根据配置调整分辨率) ---
+internal fun compressAndSaveCover(inputStream: InputStream, outputFile: File, config: CoverConfig = getCoverConfig(Int.MAX_VALUE)): Boolean {
     return try {
         val originalBitmap = BitmapFactory.decodeStream(inputStream) ?: return false
         
-        // 计算缩放比例，保持宽高比并填充目标尺寸
-        val scaleX = COVER_WIDTH.toFloat() / originalBitmap.width
-        val scaleY = COVER_HEIGHT.toFloat() / originalBitmap.height
-        val scale = maxOf(scaleX, scaleY)
-        
-        val matrix = Matrix().apply { postScale(scale, scale) }
-        val scaledBitmap = Bitmap.createBitmap(
-            originalBitmap, 0, 0,
-            originalBitmap.width, originalBitmap.height,
-            matrix, true
-        )
-        
-        // 裁剪到目标尺寸
-        val cropX = (scaledBitmap.width - COVER_WIDTH).coerceAtLeast(0) / 2
-        val cropY = (scaledBitmap.height - COVER_HEIGHT).coerceAtLeast(0) / 2
-        val finalBitmap = Bitmap.createBitmap(
-            scaledBitmap, cropX, cropY,
-            minOf(COVER_WIDTH, scaledBitmap.width),
-            minOf(COVER_HEIGHT, scaledBitmap.height)
-        )
+        val finalBitmap = if (config.skipResize && originalBitmap.width <= config.width && originalBitmap.height <= config.height) {
+            // 原图已经在限制范围内，不缩放
+            originalBitmap
+        } else {
+            // 计算缩放比例
+            val targetW = config.width
+            val targetH = config.height
+            val scaleX = targetW.toFloat() / originalBitmap.width
+            val scaleY = targetH.toFloat() / originalBitmap.height
+            val scale = if (config.skipResize) {
+                // skipResize 模式下只缩小不放大，取较小的缩放比以适应限制
+                minOf(scaleX, scaleY).coerceAtMost(1f)
+            } else {
+                // 正常模式：放大填充目标尺寸后裁剪
+                maxOf(scaleX, scaleY)
+            }
+            
+            if (scale == 1f && !config.skipResize.not()) {
+                originalBitmap
+            } else {
+                val matrix = Matrix().apply { postScale(scale, scale) }
+                val scaledBitmap = Bitmap.createBitmap(
+                    originalBitmap, 0, 0,
+                    originalBitmap.width, originalBitmap.height,
+                    matrix, true
+                )
+                
+                if (config.skipResize) {
+                    // skipResize 模式不裁剪
+                    if (scaledBitmap !== originalBitmap) originalBitmap.recycle()
+                    scaledBitmap
+                } else {
+                    // 裁剪到目标尺寸
+                    val cropX = (scaledBitmap.width - targetW).coerceAtLeast(0) / 2
+                    val cropY = (scaledBitmap.height - targetH).coerceAtLeast(0) / 2
+                    val cropped = Bitmap.createBitmap(
+                        scaledBitmap, cropX, cropY,
+                        minOf(targetW, scaledBitmap.width),
+                        minOf(targetH, scaledBitmap.height)
+                    )
+                    if (scaledBitmap !== originalBitmap) originalBitmap.recycle()
+                    if (cropped !== scaledBitmap) scaledBitmap.recycle()
+                    cropped
+                }
+            }
+        }
         
         // 保存为 WebP 格式
         outputFile.outputStream().use { out ->
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                finalBitmap.compress(Bitmap.CompressFormat.WEBP_LOSSY, COVER_QUALITY, out)
+                finalBitmap.compress(Bitmap.CompressFormat.WEBP_LOSSY, config.quality, out)
             } else {
                 @Suppress("DEPRECATION")
-                finalBitmap.compress(Bitmap.CompressFormat.WEBP, COVER_QUALITY, out)
+                finalBitmap.compress(Bitmap.CompressFormat.WEBP, config.quality, out)
             }
         }
         
         // 回收 Bitmap
-        if (finalBitmap !== scaledBitmap) finalBitmap.recycle()
-        if (scaledBitmap !== originalBitmap) scaledBitmap.recycle()
+        if (finalBitmap !== originalBitmap) finalBitmap.recycle()
         originalBitmap.recycle()
         
         true
@@ -75,36 +115,51 @@ private fun compressAndSaveCover(inputStream: InputStream, outputFile: File): Bo
 }
 
 // --- 从 Bitmap 压缩并保存封面 (用于 PDF) ---
-private fun compressAndSaveCoverFromBitmap(bitmap: Bitmap, outputFile: File): Boolean {
+private fun compressAndSaveCoverFromBitmap(bitmap: Bitmap, outputFile: File, config: CoverConfig = getCoverConfig(Int.MAX_VALUE)): Boolean {
     return try {
-        val scaleX = COVER_WIDTH.toFloat() / bitmap.width
-        val scaleY = COVER_HEIGHT.toFloat() / bitmap.height
-        val scale = maxOf(scaleX, scaleY)
+        val targetW = config.width
+        val targetH = config.height
+        val scaleX = targetW.toFloat() / bitmap.width
+        val scaleY = targetH.toFloat() / bitmap.height
+        val scale = if (config.skipResize) {
+            minOf(scaleX, scaleY).coerceAtMost(1f)
+        } else {
+            maxOf(scaleX, scaleY)
+        }
         
-        val matrix = Matrix().apply { postScale(scale, scale) }
-        val scaledBitmap = Bitmap.createBitmap(
-            bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true
-        )
-        
-        val cropX = (scaledBitmap.width - COVER_WIDTH).coerceAtLeast(0) / 2
-        val cropY = (scaledBitmap.height - COVER_HEIGHT).coerceAtLeast(0) / 2
-        val finalBitmap = Bitmap.createBitmap(
-            scaledBitmap, cropX, cropY,
-            minOf(COVER_WIDTH, scaledBitmap.width),
-            minOf(COVER_HEIGHT, scaledBitmap.height)
-        )
-        
-        outputFile.outputStream().use { out ->
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                finalBitmap.compress(Bitmap.CompressFormat.WEBP_LOSSY, COVER_QUALITY, out)
+        val finalBitmap = if (scale == 1f && config.skipResize) {
+            bitmap
+        } else {
+            val matrix = Matrix().apply { postScale(scale, scale) }
+            val scaledBitmap = Bitmap.createBitmap(
+                bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true
+            )
+            
+            if (config.skipResize) {
+                scaledBitmap
             } else {
-                @Suppress("DEPRECATION")
-                finalBitmap.compress(Bitmap.CompressFormat.WEBP, COVER_QUALITY, out)
+                val cropX = (scaledBitmap.width - targetW).coerceAtLeast(0) / 2
+                val cropY = (scaledBitmap.height - targetH).coerceAtLeast(0) / 2
+                val cropped = Bitmap.createBitmap(
+                    scaledBitmap, cropX, cropY,
+                    minOf(targetW, scaledBitmap.width),
+                    minOf(targetH, scaledBitmap.height)
+                )
+                if (cropped !== scaledBitmap) scaledBitmap.recycle()
+                cropped
             }
         }
         
-        if (finalBitmap !== scaledBitmap) finalBitmap.recycle()
-        if (scaledBitmap !== bitmap) scaledBitmap.recycle()
+        outputFile.outputStream().use { out ->
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                finalBitmap.compress(Bitmap.CompressFormat.WEBP_LOSSY, config.quality, out)
+            } else {
+                @Suppress("DEPRECATION")
+                finalBitmap.compress(Bitmap.CompressFormat.WEBP, config.quality, out)
+            }
+        }
+        
+        if (finalBitmap !== bitmap) finalBitmap.recycle()
         
         true
     } catch (e: Exception) {
@@ -327,8 +382,8 @@ internal suspend fun collectRarEntries(context: Context, rarUri: Uri): List<Stri
     }
 }
 
-// --- 获取ZIP/CBZ的封面 (压缩为 300x450 WebP) ---
-suspend fun getCoverFromZip(context: Context, zipUri: Uri, internalPath: String? = null): String? = withContext(Dispatchers.IO) {
+// --- 获取ZIP/CBZ的封面 (根据资源数量动态调整分辨率) ---
+suspend fun getCoverFromZip(context: Context, zipUri: Uri, internalPath: String? = null, totalItems: Int = Int.MAX_VALUE): String? = withContext(Dispatchers.IO) {
     try {
         val hashSource = zipUri.toString() + (internalPath ?: "")
         val hash = MessageDigest.getInstance("MD5")
@@ -345,7 +400,7 @@ suspend fun getCoverFromZip(context: Context, zipUri: Uri, internalPath: String?
         if (oldCoverFile.exists()) {
             // 迁移旧封面到新格式
             oldCoverFile.inputStream().use { input ->
-                if (compressAndSaveCover(input, coverFile)) {
+                if (compressAndSaveCover(input, coverFile, getCoverConfig(totalItems))) {
                     oldCoverFile.delete()
                     return@withContext coverFile.absolutePath
                 }
@@ -380,7 +435,7 @@ suspend fun getCoverFromZip(context: Context, zipUri: Uri, internalPath: String?
             while (entry != null) {
                 if (entry.name == firstImageName) {
                     // 使用压缩函数保存封面
-                    if (compressAndSaveCover(zis, coverFile)) {
+                    if (compressAndSaveCover(zis, coverFile, getCoverConfig(totalItems))) {
                         return@withContext coverFile.absolutePath
                     }
                 }
@@ -509,8 +564,8 @@ suspend fun countImagesInRar(context: Context, rarUri: Uri, internalPath: String
     }
 }
 
-// --- 获取RAR/CBR的封面 (压缩为 300x450 WebP) ---
-suspend fun getCoverFromRar(context: Context, rarUri: Uri, internalPath: String? = null): String? = withContext(Dispatchers.IO) {
+// --- 获取RAR/CBR的封面 (根据资源数量动态调整分辨率) ---
+suspend fun getCoverFromRar(context: Context, rarUri: Uri, internalPath: String? = null, totalItems: Int = Int.MAX_VALUE): String? = withContext(Dispatchers.IO) {
     val hashSource = rarUri.toString() + (internalPath ?: "")
     val hash = MessageDigest.getInstance("MD5")
         .digest(hashSource.toByteArray())
@@ -526,7 +581,7 @@ suspend fun getCoverFromRar(context: Context, rarUri: Uri, internalPath: String?
     if (oldCoverFile.exists()) {
         // 迁移旧封面到新格式
         oldCoverFile.inputStream().use { input ->
-            if (compressAndSaveCover(input, coverFile)) {
+            if (compressAndSaveCover(input, coverFile, getCoverConfig(totalItems))) {
                 oldCoverFile.delete()
                 return@withContext coverFile.absolutePath
             }
@@ -560,7 +615,7 @@ suspend fun getCoverFromRar(context: Context, rarUri: Uri, internalPath: String?
         
         // 使用压缩函数保存封面
         archive.getInputStream(firstImage).use { input ->
-            compressAndSaveCover(input, coverFile)
+            compressAndSaveCover(input, coverFile, getCoverConfig(totalItems))
         }
         
         archive.close()
@@ -625,8 +680,8 @@ suspend fun countPagesInPdf(context: Context, pdfUri: Uri): Int = withContext(Di
     }
 }
 
-// --- 获取PDF的封面 (压缩为 300x450 WebP) ---
-suspend fun getCoverFromPdf(context: Context, pdfUri: Uri): String? = withContext(Dispatchers.IO) {
+// --- 获取PDF的封面 (根据资源数量动态调整分辨率) ---
+suspend fun getCoverFromPdf(context: Context, pdfUri: Uri, totalItems: Int = Int.MAX_VALUE): String? = withContext(Dispatchers.IO) {
     try {
         val hash = MessageDigest.getInstance("MD5")
             .digest(pdfUri.toString().toByteArray())
@@ -642,7 +697,7 @@ suspend fun getCoverFromPdf(context: Context, pdfUri: Uri): String? = withContex
         if (oldCoverFile.exists()) {
             // 迁移旧封面到新格式
             oldCoverFile.inputStream().use { input ->
-                if (compressAndSaveCover(input, coverFile)) {
+                if (compressAndSaveCover(input, coverFile, getCoverConfig(totalItems))) {
                     oldCoverFile.delete()
                     return@withContext coverFile.absolutePath
                 }
@@ -660,7 +715,7 @@ suspend fun getCoverFromPdf(context: Context, pdfUri: Uri): String? = withContex
             page.close()
             
             // 使用压缩函数保存封面
-            compressAndSaveCoverFromBitmap(bitmap, coverFile)
+            compressAndSaveCoverFromBitmap(bitmap, coverFile, getCoverConfig(totalItems))
             bitmap.recycle()
         }
         

@@ -450,7 +450,8 @@ fun ComicApp(
                 when (currentMediaType) {
                     MediaType.COMIC -> {
                         val existingUris = comicHistoryList.map { it.uriString }.toSet()
-                        scanComicsFlow(context, treeUri, existingUris) { name ->
+                        val totalItemCount = comicHistoryList.size
+                        scanComicsFlow(context, treeUri, existingUris, totalItemCount) { name ->
                             if (scanState.isScanning) scanState = scanState.copy(currentFolder = name)
                         }.collect { newComic ->
                             if (comicHistoryList.none { it.uriString == newComic.uriString }) {
@@ -472,7 +473,8 @@ fun ComicApp(
                     }
                     MediaType.AUDIO -> {
                         val existingUris = audioHistoryList.map { it.uriString }.toSet()
-                        scanAudiosFlow(context, treeUri, existingUris) { name ->
+                        val totalItemCount = audioHistoryList.size
+                        scanAudiosFlow(context, treeUri, existingUris, totalItemCount) { name ->
                             if (scanState.isScanning) scanState = scanState.copy(currentFolder = name)
                         }.collect { newAudio ->
                             if (audioHistoryList.none { it.uriString == newAudio.uriString }) {

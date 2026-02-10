@@ -41,6 +41,7 @@ fun scanComicsFlow(
     context: Context, 
     rootTreeUri: Uri, 
     existingComics: Map<String, ComicHistory>,
+    totalItems: Int = Int.MAX_VALUE,
     onFolderScanning: (String) -> Unit
 ): Flow<ComicHistory> = flow {
     val rootDoc = DocumentFile.fromTreeUri(context, rootTreeUri) ?: return@flow
@@ -73,7 +74,7 @@ fun scanComicsFlow(
             
             // PDF 不支持章节检测
             if (sourceType == ComicSourceType.PDF) {
-                val coverUri = getCoverFromPdf(context, level1File.uri)
+                val coverUri = getCoverFromPdf(context, level1File.uri, totalItems)
                 val totalPages = countPagesInPdf(context, level1File.uri)
                 if (totalPages > 0) {
                     val chapters = listOf(ComicChapter("全一册", fileUri, sourceType))
@@ -126,8 +127,8 @@ fun scanComicsFlow(
                     chapters = listOf(ComicChapter("全一册", fileUri, sourceType))
                     totalPages = pageCount
                     coverUri = when (sourceType) {
-                        ComicSourceType.ZIP -> getCoverFromZip(context, level1File.uri)
-                        ComicSourceType.RAR -> getCoverFromRar(context, level1File.uri)
+                        ComicSourceType.ZIP -> getCoverFromZip(context, level1File.uri, totalItems = totalItems)
+                        ComicSourceType.RAR -> getCoverFromRar(context, level1File.uri, totalItems = totalItems)
                         else -> null
                     }
                 } else {
@@ -152,8 +153,8 @@ fun scanComicsFlow(
                 
                 val firstChapterPath = chapters.first().internalPath
                 coverUri = when (sourceType) {
-                    ComicSourceType.ZIP -> getCoverFromZip(context, level1File.uri, firstChapterPath)
-                    ComicSourceType.RAR -> getCoverFromRar(context, level1File.uri, firstChapterPath)
+                    ComicSourceType.ZIP -> getCoverFromZip(context, level1File.uri, firstChapterPath, totalItems)
+                    ComicSourceType.RAR -> getCoverFromRar(context, level1File.uri, firstChapterPath, totalItems)
                     else -> null
                 }
             }
@@ -248,11 +249,11 @@ fun scanComicsFlow(
 
 
 // 兼容旧接口
-fun scanComicsFlow(context: Context, rootTreeUri: Uri, existingUris: Set<String>, onFolderScanning: (String) -> Unit): Flow<ComicHistory> {
+fun scanComicsFlow(context: Context, rootTreeUri: Uri, existingUris: Set<String>, totalItems: Int = Int.MAX_VALUE, onFolderScanning: (String) -> Unit): Flow<ComicHistory> {
     val emptyMap = existingUris.associateWith { uri -> 
         ComicHistory(id = uri, name = "", uriString = uri, coverUriString = null, timestamp = 0, lastScannedAt = Long.MAX_VALUE)
     }
-    return scanComicsFlow(context, rootTreeUri, emptyMap, onFolderScanning)
+    return scanComicsFlow(context, rootTreeUri, emptyMap, totalItems, onFolderScanning)
 }
 
 // --- 小说扫描 ---
@@ -329,7 +330,7 @@ fun scanNovelsFlow(context: Context, rootTreeUri: Uri, existingUris: Set<String>
 }.flowOn(Dispatchers.IO)
 
 // --- 音频扫描 ---
-fun scanAudiosFlow(context: Context, rootTreeUri: Uri, existingUris: Set<String>, onFolderScanning: (String) -> Unit): Flow<AudioHistory> = flow {
+fun scanAudiosFlow(context: Context, rootTreeUri: Uri, existingUris: Set<String>, totalItems: Int = Int.MAX_VALUE, onFolderScanning: (String) -> Unit): Flow<AudioHistory> = flow {
     val rootDoc = DocumentFile.fromTreeUri(context, rootTreeUri) ?: return@flow
     withContext(Dispatchers.Main) { onFolderScanning(rootDoc.name ?: "音频") }
 
@@ -355,7 +356,7 @@ fun scanAudiosFlow(context: Context, rootTreeUri: Uri, existingUris: Set<String>
         val fileUri = file.uri.toString()
         if (existingUris.contains(fileUri)) return@forEach
         
-        val coverUri = extractEmbeddedCover(context, file.uri, file.name ?: "audio") ?: rootCoverUri
+        val coverUri = extractEmbeddedCover(context, file.uri, file.name ?: "audio", totalItems) ?: rootCoverUri
         emit(
             AudioHistory(
                 id = fileUri,
@@ -387,7 +388,7 @@ fun scanAudiosFlow(context: Context, rootTreeUri: Uri, existingUris: Set<String>
             .sortedWith { a, b -> compareNatural(a.name ?: "", b.name ?: "") }
             .firstOrNull()?.uri?.toString()
         
-        val firstAudioCover = extractEmbeddedCover(context, albumAudioFiles.first().uri, albumAudioFiles.first().name ?: "audio")
+        val firstAudioCover = extractEmbeddedCover(context, albumAudioFiles.first().uri, albumAudioFiles.first().name ?: "audio", totalItems)
         val albumCoverUri = firstAudioCover ?: folderCoverUri
         
         val tracks = albumAudioFiles.map { audioFile ->
@@ -407,8 +408,8 @@ fun scanAudiosFlow(context: Context, rootTreeUri: Uri, existingUris: Set<String>
     }
 }.flowOn(Dispatchers.IO)
 
-// 提取音频文件的内嵌封面
-private fun extractEmbeddedCover(context: Context, audioUri: Uri, fileName: String): String? {
+// 提取音频文件的内嵌封面 (使用分档压缩)
+private fun extractEmbeddedCover(context: Context, audioUri: Uri, fileName: String, totalItems: Int = Int.MAX_VALUE): String? {
     return try {
         val retriever = android.media.MediaMetadataRetriever()
         try {
@@ -419,10 +420,19 @@ private fun extractEmbeddedCover(context: Context, audioUri: Uri, fileName: Stri
                 if (!cacheDir.exists()) cacheDir.mkdirs()
                 
                 val hash = fileName.hashCode().toString(16)
-                val coverFile = File(cacheDir, "$hash.jpg")
+                val coverFile = File(cacheDir, "$hash.webp")
                 
                 if (!coverFile.exists()) {
-                    coverFile.writeBytes(coverBytes)
+                    // 使用分档压缩 (音频封面为1:1比例)
+                    val config = getCoverConfig(totalItems)
+                    val audioConfig = CoverConfig(
+                        width = config.height / 3 * 2,  // 使用高度的2/3作为正方形边长 (相当于: 1500/1350/450)
+                        height = config.height / 3 * 2,
+                        quality = config.quality,
+                        skipResize = config.skipResize
+                    )
+                    val inputStream = java.io.ByteArrayInputStream(coverBytes)
+                    compressAndSaveCover(inputStream, coverFile, audioConfig)
                 }
                 
                 coverFile.absolutePath

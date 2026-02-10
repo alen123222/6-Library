@@ -253,7 +253,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     MediaType.COMIC -> {
                         // 使用 Map 接口支持增量扫描
                         val existingComicsMap = comicHistoryList.associateBy { it.uriString }
-                        scanComicsFlow(context, treeUri, existingComicsMap) { name ->
+                        val totalItemCount = comicHistoryList.size
+                        scanComicsFlow(context, treeUri, existingComicsMap, totalItemCount) { name ->
                             if (scanState.isScanning) scanState = scanState.copy(currentFolder = name)
                         }.collect { comic ->
                             // 无论是新增还是更新，都添加/替换到列表
@@ -274,7 +275,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     }
                     MediaType.AUDIO -> {
                         val existingUris = audioHistoryList.map { it.uriString }.toSet()
-                        scanAudiosFlow(context, treeUri, existingUris) { name ->
+                        val totalItemCount = audioHistoryList.size
+                        scanAudiosFlow(context, treeUri, existingUris, totalItemCount) { name ->
                             if (scanState.isScanning) scanState = scanState.copy(currentFolder = name)
                         }.collect { newAudio ->
                             if (audioHistoryList.none { it.uriString == newAudio.uriString }) {
