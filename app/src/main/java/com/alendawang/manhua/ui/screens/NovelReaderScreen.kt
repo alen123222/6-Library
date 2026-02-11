@@ -208,11 +208,13 @@ fun NovelReaderScreen(
         isLoading = true
         loadChapterBlock(chapterIndex)
         isLoading = false
-        // Preload next 3 chapters
-        (1..3).forEach { offset ->
-            val nextIndex = chapterIndex + offset
-            if (nextIndex <= novel.chapters.lastIndex) {
-                preloadScope.launch { loadChapterBlock(nextIndex) }
+        // 顺序预加载后续章节，避免并发争抢CPU导致快速滑动时卡顿
+        preloadScope.launch {
+            for (offset in 1..3) {
+                val nextIndex = chapterIndex + offset
+                if (nextIndex <= novel.chapters.lastIndex) {
+                    loadChapterBlock(nextIndex)
+                }
             }
         }
     }
@@ -285,6 +287,17 @@ fun NovelReaderScreen(
         } else {
             currentChapterText = null
             viewModel.chapterTitle = ""
+        }
+
+        // 滚动跟踪式预加载：当前章节变化时，保持前方3章缓冲
+        // loadChapterBlock内部有去重守卫，已加载的章节会被自动跳过
+        preloadScope.launch {
+            for (offset in 1..3) {
+                val nextIndex = currentChapterIndex + offset
+                if (nextIndex <= novel.chapters.lastIndex) {
+                    loadChapterBlock(nextIndex)
+                }
+            }
         }
     }
 
@@ -519,6 +532,10 @@ fun NovelReaderScreen(
                                     android.widget.TextView(ctx).apply {
                                         movementMethod = android.text.method.LinkMovementMethod.getInstance()
                                         setTextIsSelectable(true)
+                                        // 在factory中设置初始文本，确保首次布局时高度正确
+                                        text = part
+                                        setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, viewModel.config.fontSize)
+                                        setTextColor(viewModel.config.backgroundColor.textColor.toArgb())
                                         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
                                             breakStrategy = android.text.Layout.BREAK_STRATEGY_SIMPLE
                                             hyphenationFrequency = android.text.Layout.HYPHENATION_FREQUENCY_NONE
@@ -529,12 +546,10 @@ fun NovelReaderScreen(
                                     }
                                 },
                                 update = { view ->
-                                    // 使用post延迟文本设置，避免阻塞重组过程
-                                    view.post {
-                                        view.text = part
-                                        view.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, viewModel.config.fontSize)
-                                        view.setTextColor(viewModel.config.backgroundColor.textColor.toArgb())
-                                    }
+                                    // 同步设置文本，避免post延迟导致高度为0引起标题截断
+                                    view.text = part
+                                    view.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, viewModel.config.fontSize)
+                                    view.setTextColor(viewModel.config.backgroundColor.textColor.toArgb())
                                     view.setOnClickListener {
                                         viewModel.showMenu = !viewModel.showMenu
                                     }

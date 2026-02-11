@@ -121,12 +121,27 @@ fun splitSpanned(text: CharSequence, limit: Int = 3000): List<CharSequence> {
     while (start < len) {
         var end = (start + limit).coerceAtMost(len)
         if (end < len) {
-            val nextNewline = text.indexOf('\n', end)
-            if (nextNewline != -1 && nextNewline - start < limit * 1.2) {
-                end = nextNewline + 1
-            } else {
-                val nextSpace = text.indexOf(' ', end)
-                if (nextSpace != -1) end = nextSpace + 1
+            // 优先在双换行（段落边界）处切割，避免切断章节标题
+            var found = false
+            val searchStart = end
+            val searchLimit = (limit * 1.3).toInt() + start
+            for (i in searchStart until searchLimit.coerceAtMost(len) - 1) {
+                if (text[i] == '\n' && text[i + 1] == '\n') {
+                    end = i + 2
+                    found = true
+                    break
+                }
+            }
+            if (!found) {
+                val nextNewline = text.indexOf('\n', end)
+                if (nextNewline != -1 && nextNewline - start < limit * 1.2) {
+                    end = nextNewline + 1
+                } else {
+                    val nextSpace = text.indexOf(' ', end)
+                    if (nextSpace != -1 && nextSpace - start < limit * 1.5) {
+                        end = nextSpace + 1
+                    }
+                }
             }
         }
         list.add(text.subSequence(start, end))

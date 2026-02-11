@@ -4,24 +4,19 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
-    // 确保你的 libs.versions.toml 里有 compose 插件的定义
-    // 如果没有，你可能需要用 id("org.jetbrains.kotlin.plugin.compose????")
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
 }
 
 android {
     namespace = "com.alendawang.manhua"
-    // compileSdk 36 是一个预览版 SDK (Android V)，如果遇到问题可以降级到 34 (Android U)
-    compileSdk = 35 // 使用一个更新但可能比 36 更稳定的版本
-
+    compileSdk = 35
     defaultConfig {
         applicationId = "com.alendawang.manhua"
         minSdk = 21
-        // targetSdk 应该与 compileSdk 保持一致
         targetSdk = 35
-        versionCode = 3
-        versionName = "1.0.2"
+        versionCode = 4
+        versionName = "1.0.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -46,7 +41,6 @@ android {
         }
     }
     compileOptions {
-        // 推荐使用更新的 Java 版本，比如 17，与现代Android Studio匹配
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -63,10 +57,9 @@ composeCompiler {
     enableStrongSkippingMode = true
 }
 
-// 这是清理和整合后的依赖块
 dependencies {
 
-    // 1. 核心依赖：使用版本目录（libs）来管理，这是最佳实践
+
     implementation(libs.androidx.core.ktx)
 
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -74,12 +67,9 @@ dependencies {
     implementation(libs.androidx.documentfile)
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0") // DocumentFile 需要的依赖
 
-    // 2. Compose BOM：统一使用稳定版，并且只声明一次！
-    // 确保你的 libs.versions.toml 文件中的 compose-bom 指向 "2024.05.00"
-    // 如果不确定，可以直接用下面的硬编码方式，更保险
+
     implementation(platform("androidx.compose:compose-bom:2024.05.00"))
 
-    // Compose UI 相关的库，不需要指定版本，BOM会管理
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
