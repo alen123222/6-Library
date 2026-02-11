@@ -88,6 +88,10 @@ dependencies {
         // 排除可能在Android上不兼容的依赖
         exclude(group = "commons-logging", module = "commons-logging")
     }
+    implementation("com.positiondev.epublib:epublib-core:3.1") {
+        exclude(group = "org.slf4j")
+        exclude(group = "xmlpull")
+    }
 
     // Room 数据库
     implementation(libs.androidx.room.runtime)

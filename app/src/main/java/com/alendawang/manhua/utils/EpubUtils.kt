@@ -1,225 +1,268 @@
+@file:Suppress("UNCHECKED_CAST")
 package com.alendawang.manhua.utils
 
 import android.content.Context
 import android.net.Uri
 import com.alendawang.manhua.model.NovelChapter
-import org.xmlpull.v1.XmlPullParser
-import org.xmlpull.v1.XmlPullParserFactory
+import nl.siegmann.epublib.epub.EpubReader
+import nl.siegmann.epublib.domain.Book
+import nl.siegmann.epublib.domain.Resource
+import nl.siegmann.epublib.domain.SpineReference
+import nl.siegmann.epublib.domain.TOCReference
 import java.io.File
 import java.security.MessageDigest
-import java.util.zip.ZipInputStream
 
-// --- EPUB解析 (流式读取，不缓存EPUB文件) ---
+// --- EPUB解析 (使用 epublib 库) ---
 fun parseEpubFile(context: Context, uri: Uri): Pair<List<NovelChapter>, String?>? {
     return try {
         val hash = MessageDigest.getInstance("MD5")
             .digest(uri.toString().toByteArray())
             .joinToString("") { "%02x".format(it) }
-        
-        var containerXml: String? = null
-        var opfPath: String? = null
-        var opfContent: String? = null
-        var ncxContent: String? = null
-        val entryContents = mutableMapOf<String, ByteArray>()
-        
-        // 首先读取 container.xml 找到 opf 路径
-        context.contentResolver.openInputStream(uri)?.use { inputStream ->
-            ZipInputStream(inputStream).use { zis ->
-                var entry = zis.nextEntry
-                while (entry != null) {
-                    when {
-                        entry.name == "META-INF/container.xml" -> {
-                            containerXml = String(zis.readBytes())
-                        }
-                        entry.name.endsWith(".opf") && opfPath == null -> {
-                            opfPath = entry.name
-                            opfContent = String(zis.readBytes())
-                        }
-                    }
-                    zis.closeEntry()
-                    entry = zis.nextEntry
-                }
-            }
+
+        val book = context.contentResolver.openInputStream(uri)?.use { inputStream ->
+            EpubReader().readEpub(inputStream)
+        } ?: return null
+
+        // 提取封面
+        val coverUriString = extractEpubCover(context, book, hash)
+
+        // 构建章节列表
+        val chapters = buildChapterList(book, uri.toString())
+
+        if (chapters.isEmpty()) return null
+
+        Pair(chapters, coverUriString)
+    } catch (e: Exception) {
+        e.printStackTrace()
+        null
+    }
+}
+
+// 提取封面图片
+private fun extractEpubCover(context: Context, book: Book, hash: String): String? {
+    return try {
+        val coverImage: Resource? = book.coverImage
+        if (coverImage == null) return null
+        val coverBytes: ByteArray = coverImage.data ?: return null
+
+        val ext = coverImage.mediaType?.defaultExtension ?: "jpg"
+        val coverCacheFile = File(context.cacheDir, "covers/${hash}_cover.$ext")
+
+        if (!coverCacheFile.exists()) {
+            coverCacheFile.parentFile?.mkdirs()
+            coverCacheFile.writeBytes(coverBytes)
         }
-        
-        if (containerXml != null) {
-            val parsedOpfPath = parseContainerXml(containerXml!!)
-            if (parsedOpfPath != null && parsedOpfPath != opfPath) {
-                opfPath = parsedOpfPath
-                opfContent = null
-            }
-        }
-        
-        if (opfPath == null) return null
-        
-        if (opfContent == null) {
-            context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                ZipInputStream(inputStream).use { zis ->
-                    var entry = zis.nextEntry
-                    while (entry != null) {
-                        if (entry.name == opfPath) {
-                            opfContent = String(zis.readBytes())
-                            break
-                        }
-                        zis.closeEntry()
-                        entry = zis.nextEntry
-                    }
-                }
-            }
-        }
-        
-        if (opfContent == null) return null
-        
-        val opfDir = opfPath!!.substringBeforeLast("/", "")
-        val (manifest, spine, coverHref) = parseOpfFile(opfContent!!)
-        
-        val ncxHref = manifest.entries.find { it.value.endsWith(".ncx", true) }?.value 
-            ?: manifest.entries.find { it.key.equals("ncx", true) }?.value
-        val ncxPath = if (ncxHref != null && opfDir.isNotEmpty()) "$opfDir/$ncxHref" else ncxHref
-        val coverPath = if (coverHref != null && opfDir.isNotEmpty()) "$opfDir/$coverHref" else coverHref
-        
-        context.contentResolver.openInputStream(uri)?.use { inputStream ->
-            ZipInputStream(inputStream).use { zis ->
-                var entry = zis.nextEntry
-                while (entry != null) {
-                    val normalizedName = normalizePath(entry.name)
-                    when {
-                        ncxPath != null && normalizedName == normalizePath(ncxPath) -> {
-                            ncxContent = String(zis.readBytes())
-                        }
-                        coverPath != null && normalizedName == normalizePath(coverPath) -> {
-                            entryContents[entry.name] = zis.readBytes()
-                        }
-                    }
-                    zis.closeEntry()
-                    entry = zis.nextEntry
-                }
-            }
-        }
-        
-        // 保存封面图片
-        var coverUriString: String? = null
-        if (coverPath != null && entryContents.isNotEmpty()) {
-            val coverHash = Integer.toHexString(coverPath.hashCode())
-            val coverCacheFile = File(context.cacheDir, "covers/${hash}_$coverHash.jpg")
-            if (!coverCacheFile.exists()) {
-                coverCacheFile.parentFile?.mkdirs()
-                entryContents.values.firstOrNull()?.let { bytes ->
-                    coverCacheFile.writeBytes(bytes)
-                }
-            }
-            if (coverCacheFile.exists()) {
-                coverUriString = coverCacheFile.absolutePath
-            }
-        }
-        
-        val titleMap = ncxContent?.let { parseNcx(it) }
-        
+
+        if (coverCacheFile.exists()) coverCacheFile.absolutePath else null
+    } catch (e: Exception) {
+        e.printStackTrace()
+        null
+    }
+}
+
+// 从TOC构建章节列表
+private fun buildChapterList(book: Book, uriString: String): List<NovelChapter> {
+    val toc = book.tableOfContents
+    val tocRefs: List<TOCReference>? = toc?.tocReferences as? List<TOCReference>
+
+    // 优先使用 TOC (目录)
+    if (!tocRefs.isNullOrEmpty()) {
         val chapters = mutableListOf<NovelChapter>()
-        spine.forEachIndexed { index, itemId ->
-            val href = manifest[itemId] ?: return@forEachIndexed
-            val fullPath = if (opfDir.isNotEmpty()) "$opfDir/$href" else href
-            val normalizedPath = normalizePath(fullPath)
-            
-            val title = titleMap?.get(href) 
-                ?: titleMap?.get(href.substringAfterLast("/")) 
-                ?: "第${index + 1}章"
-            
-            chapters.add(
+        flattenToc(tocRefs, chapters, uriString)
+        if (chapters.isNotEmpty()) return chapters
+    }
+
+    // 如果没有TOC，使用 spine (阅读顺序)
+    val spine = book.spine ?: return emptyList()
+    val spineRefs: List<SpineReference> = spine.spineReferences as? List<SpineReference> ?: return emptyList()
+    val chapters = mutableListOf<NovelChapter>()
+
+    for ((i, ref) in spineRefs.withIndex()) {
+        val resource: Resource = ref.resource ?: continue
+        val href: String = resource.href ?: continue
+
+        // 跳过封面页面 (通常第一个且包含 "cover")
+        if (i == 0 && href.contains("cover", ignoreCase = true)) continue
+
+        val title: String = (resource.title as? String)?.takeIf { it.isNotBlank() }
+            ?: "第${chapters.size + 1}章"
+
+        chapters.add(
+            NovelChapter(
+                name = title,
+                uriString = uriString,
+                startIndex = i,
+                endIndex = i,
+                isEpubChapter = true,
+                htmlContent = null,
+                internalPath = href
+            )
+        )
+    }
+
+    return chapters
+}
+
+// 递归展开 TOC 树结构
+private fun flattenToc(
+    refs: List<TOCReference>,
+    result: MutableList<NovelChapter>,
+    uriString: String
+) {
+    for (ref in refs) {
+        val resource: Resource? = ref.resource
+        val href: String = resource?.href ?: continue
+        val title: String = (ref.title as? String)?.takeIf { it.isNotBlank() }
+            ?: (resource.title as? String)?.takeIf { it.isNotBlank() }
+            ?: "第${result.size + 1}章"
+
+        // 去除锚点 fragment，只保留文件路径
+        val cleanHref = href.substringBefore("#")
+
+        // 避免重复添加同一个文件的不同锚点
+        if (result.none { it.internalPath == cleanHref }) {
+            result.add(
                 NovelChapter(
                     name = title,
-                    uriString = uri.toString(),
-                    startIndex = index,
-                    endIndex = index,
+                    uriString = uriString,
+                    startIndex = result.size,
+                    endIndex = result.size,
                     isEpubChapter = true,
                     htmlContent = null,
-                    internalPath = normalizedPath
+                    internalPath = cleanHref
                 )
             )
         }
-        
-        Pair(chapters, coverUriString)
-        
-    } catch (e: Exception) {
-        e.printStackTrace()
-        null
+
+        // 递归处理子目录
+        val children: List<TOCReference>? = ref.children as? List<TOCReference>
+        if (!children.isNullOrEmpty()) {
+            flattenToc(children, result, uriString)
+        }
     }
 }
 
-private fun parseContainerXml(xml: String): String? {
+// --- EPUB章节内容加载 (使用 epublib) ---
+fun getEpubChapterContent(context: Context, uri: Uri, internalPath: String): String {
     return try {
-        val factory = XmlPullParserFactory.newInstance()
-        val parser = factory.newPullParser()
-        parser.setInput(xml.reader())
-        
-        while (parser.eventType != XmlPullParser.END_DOCUMENT) {
-            if (parser.eventType == XmlPullParser.START_TAG && parser.name == "rootfile") {
-                return parser.getAttributeValue(null, "full-path")
-            }
-            parser.next()
-        }
-        null
-    } catch (e: Exception) { null }
-}
+        val hash = MessageDigest.getInstance("MD5")
+            .digest(uri.toString().toByteArray())
+            .joinToString("") { "%02x".format(it) }
 
-private fun parseOpfFile(opfContent: String): Triple<Map<String, String>, List<String>, String?> {
-    val manifest = mutableMapOf<String, String>()
-    val spine = mutableListOf<String>()
-    var coverHref: String? = null
-    var coverId: String? = null
-    
-    try {
-        val factory = XmlPullParserFactory.newInstance()
-        factory.isNamespaceAware = false
-        val parser = factory.newPullParser()
-        parser.setInput(opfContent.reader())
-        
-        while (parser.eventType != XmlPullParser.END_DOCUMENT) {
-            if (parser.eventType == XmlPullParser.START_TAG) {
-                when (parser.name) {
-                    "item" -> {
-                        val id = parser.getAttributeValue(null, "id")
-                        val href = parser.getAttributeValue(null, "href")
-                        if (id != null && href != null) {
-                            manifest[id] = href
-                        }
-                    }
-                    "itemref" -> {
-                        val idref = parser.getAttributeValue(null, "idref")
-                        if (idref != null) {
-                            spine.add(idref)
-                        }
-                    }
-                    "meta" -> {
-                        val name = parser.getAttributeValue(null, "name")
-                        val content = parser.getAttributeValue(null, "content")
-                        if (name == "cover" && content != null) {
-                            coverId = content
-                        }
-                    }
+        val book = context.contentResolver.openInputStream(uri)?.use { inputStream ->
+            EpubReader().readEpub(inputStream)
+        } ?: return ""
+
+        // 查找目标章节资源
+        val resource = findResource(book, internalPath) ?: return ""
+        val rawData: ByteArray = resource.data ?: return ""
+        var htmlContent = String(rawData, Charsets.UTF_8)
+
+        // 处理章节中的图片引用
+        val imgRegex = Regex("""<img[^>]+src="([^"]+)"[^>]*>""", RegexOption.IGNORE_CASE)
+        val svgImgRegex = Regex("""xlink:href="([^"]+)"""", RegexOption.IGNORE_CASE)
+        val allMatches = imgRegex.findAll(htmlContent) + svgImgRegex.findAll(htmlContent)
+
+        val entryDir = internalPath.substringBeforeLast("/", "")
+
+        for (match in allMatches) {
+            val src = match.groupValues[1]
+            if (src.startsWith("http") || src.startsWith("data:")) continue
+
+            // 解析相对路径
+            val fullPath = if (entryDir.isNotEmpty()) "$entryDir/$src" else src
+            val normalizedPath = normalizePath(fullPath)
+
+            // 从 epublib 中查找图片资源
+            val imgResource = findResource(book, normalizedPath)
+                ?: findResource(book, src) // 也尝试直接用 src
+                ?: continue
+
+            val imgData: ByteArray = imgResource.data ?: continue
+
+            // 保存到缓存
+            val imageHash = Integer.toHexString(normalizedPath.hashCode())
+            val imgExt = imgResource.mediaType?.defaultExtension
+                ?: src.substringAfterLast('.', "jpg")
+            val imageCacheFile = File(context.cacheDir, "epub_images/${hash}_$imageHash.$imgExt")
+
+            if (!imageCacheFile.exists()) {
+                imageCacheFile.parentFile?.mkdirs()
+                try {
+                    imageCacheFile.writeBytes(imgData)
+                } catch (e: Exception) {
+                    e.printStackTrace()
                 }
             }
-            parser.next()
+
+            if (imageCacheFile.exists()) {
+                htmlContent = htmlContent.replace(
+                    "\"$src\"",
+                    "\"file://${imageCacheFile.absolutePath}\""
+                )
+            }
         }
-        
-        if (coverId != null) {
-            coverHref = manifest[coverId]
-        }
-        
-        if (coverHref == null) {
-            manifest.entries.find { it.key.contains("cover", ignoreCase = true) && 
-                (it.value.endsWith(".jpg", true) || it.value.endsWith(".png", true) || it.value.endsWith(".jpeg", true)) 
-            }?.let { coverHref = it.value }
-        }
+
+        htmlContent
     } catch (e: Exception) {
         e.printStackTrace()
+        ""
     }
-    
-    return Triple(manifest, spine, coverHref)
 }
 
+// 在 Book 中查找资源 (支持多种路径匹配)
+private fun findResource(book: Book, href: String): Resource? {
+    if (href.isBlank()) return null
+
+    val normalized = normalizePath(href)
+    val decoded = try { java.net.URLDecoder.decode(href, "UTF-8") } catch (_: Exception) { href }
+
+    // 遍历 spine 查找
+    val spine = book.spine
+    if (spine != null) {
+        val spineRefs = spine.spineReferences as? List<*> ?: emptyList<Any>()
+        for (item in spineRefs) {
+            val ref = item as? SpineReference ?: continue
+            val resource: Resource = ref.resource ?: continue
+            val resHref: String = resource.href ?: continue
+            if (matchesHref(resHref, href, normalized, decoded)) {
+                return resource
+            }
+        }
+    }
+
+    // 遍历所有资源 (包括图片等非 spine 资源)
+    try {
+        val allResources = book.resources.getAll() as? Collection<*> ?: emptyList<Any>()
+        for (item in allResources) {
+            val resource = item as? Resource ?: continue
+            val resHref: String = resource.href ?: continue
+            if (matchesHref(resHref, href, normalized, decoded)) {
+                return resource
+            }
+        }
+    } catch (_: Exception) {}
+
+    return null
+}
+
+// 检查 href 是否匹配
+private fun matchesHref(resHref: String, originalHref: String, normalizedHref: String, decodedHref: String): Boolean {
+    val normalizedRes = normalizePath(resHref)
+    return normalizedRes == normalizedHref ||
+            normalizedRes == normalizePath(decodedHref) ||
+            resHref == originalHref ||
+            normalizedRes.endsWith("/$normalizedHref") ||
+            normalizedHref.endsWith("/$normalizedRes")
+}
+
+// 路径规范化 (处理 ".." 和 "./" 等相对路径)
 internal fun normalizePath(path: String): String {
-    val parts = path.split("/").toMutableList()
+    val decoded = try {
+        java.net.URLDecoder.decode(path, "UTF-8")
+    } catch (_: Exception) { path }
+
+    val parts = decoded.split("/").toMutableList()
     val result = mutableListOf<String>()
     for (part in parts) {
         when (part) {
@@ -229,117 +272,4 @@ internal fun normalizePath(path: String): String {
         }
     }
     return result.joinToString("/")
-}
-
-// --- EPUB章节内容加载 (流式读取) ---
-fun getEpubChapterContent(context: Context, uri: Uri, internalPath: String): String {
-    return try {
-        val hash = MessageDigest.getInstance("MD5")
-            .digest(uri.toString().toByteArray())
-            .joinToString("") { "%02x".format(it) }
-        
-        var htmlContent: String? = null
-        val imagesToExtract = mutableListOf<Pair<String, String>>()
-        
-        context.contentResolver.openInputStream(uri)?.use { inputStream ->
-            ZipInputStream(inputStream).use { zis ->
-                var entry = zis.nextEntry
-                while (entry != null) {
-                    if (normalizePath(entry.name) == normalizePath(internalPath)) {
-                        htmlContent = String(zis.readBytes())
-                        break
-                    }
-                    zis.closeEntry()
-                    entry = zis.nextEntry
-                }
-            }
-        }
-        
-        if (htmlContent == null) return ""
-        
-        val imgRegex = Regex("<img[^>]+src=\"([^\"]+)\"[^>]*>", RegexOption.IGNORE_CASE)
-        val matches = imgRegex.findAll(htmlContent!!)
-        val entryDir = internalPath.substringBeforeLast("/", "")
-        
-        matches.forEach { match ->
-            val src = match.groupValues[1]
-            if (!src.startsWith("http") && !src.startsWith("data:")) {
-                val fullPath = if (entryDir.isNotEmpty()) "$entryDir/$src" else src
-                imagesToExtract.add(src to normalizePath(fullPath))
-            }
-        }
-        
-        if (imagesToExtract.isNotEmpty()) {
-            val pathToSrc = imagesToExtract.associate { it.second to it.first }
-            
-            context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                ZipInputStream(inputStream).use { zis ->
-                    var entry = zis.nextEntry
-                    while (entry != null) {
-                        val normalizedEntryName = normalizePath(entry.name)
-                        val matchingSrc = pathToSrc[normalizedEntryName]
-                        
-                        if (matchingSrc != null) {
-                            val imageHash = Integer.toHexString(normalizedEntryName.hashCode())
-                            val ext = matchingSrc.substringAfterLast('.', "jpg")
-                            val imageCacheFile = File(context.cacheDir, "epub_images/${hash}_$imageHash.$ext")
-                            
-                            if (!imageCacheFile.exists()) {
-                                imageCacheFile.parentFile?.mkdirs()
-                                try {
-                                    imageCacheFile.outputStream().buffered(8192).use { output ->
-                                        zis.copyTo(output, 8192)
-                                    }
-                                } catch (e: Exception) { e.printStackTrace() }
-                            }
-                            
-                            if (imageCacheFile.exists()) {
-                                htmlContent = htmlContent!!.replace("src=\"$matchingSrc\"", "src=\"file://${imageCacheFile.absolutePath}\"")
-                            }
-                        }
-                        zis.closeEntry()
-                        entry = zis.nextEntry
-                    }
-                }
-            }
-        }
-        
-        htmlContent ?: ""
-    } catch (e: Exception) {
-        e.printStackTrace()
-        ""
-    }
-}
-
-// --- NCX解析 ---
-fun parseNcx(ncxContent: String): Map<String, String> {
-    val titleMap = mutableMapOf<String, String>()
-    try {
-        val factory = XmlPullParserFactory.newInstance()
-        val parser = factory.newPullParser()
-        parser.setInput(ncxContent.reader())
-        
-        var currentLabel: String? = null
-        var currentSrc: String? = null
-        
-        while (parser.eventType != XmlPullParser.END_DOCUMENT) {
-            when (parser.eventType) {
-                XmlPullParser.START_TAG -> {
-                    if (parser.name == "text") {
-                        currentLabel = parser.nextText()
-                    } else if (parser.name == "content") {
-                        currentSrc = parser.getAttributeValue(null, "src")
-                        if (currentLabel != null && currentSrc != null) {
-                            val cleanSrc = currentSrc!!.substringBefore("#")
-                            titleMap[cleanSrc] = currentLabel!!
-                        }
-                    } else if (parser.name == "navPoint") {
-                        currentLabel = null
-                    }
-                }
-            }
-            parser.next()
-        }
-    } catch (e: Exception) { e.printStackTrace() }
-    return titleMap
 }
