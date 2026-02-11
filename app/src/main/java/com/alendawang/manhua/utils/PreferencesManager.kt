@@ -26,6 +26,9 @@ private const val KEY_LAST_MEDIA_TYPE = "last_media_type"
 private const val KEY_APP_LANGUAGE = "app_language"
 private const val KEY_LANGUAGE_INITIALIZED = "language_initialized"
 private const val KEY_UNLOCK_METHOD = "unlock_method"
+private const val KEY_IMPORT_TREE_URI = "import_tree_uri"
+private const val KEY_DONT_ASK_IMPORT_DIR = "dont_ask_import_dir"
+private const val KEY_DONT_SHOW_LARGE_FILE_TIP = "dont_show_large_file_tip"
 
 private const val PREFS_READER_CONFIG = "reader_config_prefs"
 private const val KEY_READER_CONFIG = "reader_config_v1"
@@ -500,4 +503,32 @@ fun loadUnlockMethod(context: Context): UnlockMethod {
     val value = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         .getString(KEY_UNLOCK_METHOD, null)
     return UnlockMethod.fromString(value)
+}
+
+// --- 外部文件导入设置 ---
+fun loadImportTreeUri(context: Context): String? {
+    return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        .getString(KEY_IMPORT_TREE_URI, null)
+}
+
+fun saveImportTreeUri(context: Context, uri: String) {
+    context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit { putString(KEY_IMPORT_TREE_URI, uri) }
+}
+
+fun loadDontAskImportDir(context: Context): Boolean {
+    return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        .getBoolean(KEY_DONT_ASK_IMPORT_DIR, false)
+}
+
+fun saveDontAskImportDir(context: Context, value: Boolean) {
+    context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit { putBoolean(KEY_DONT_ASK_IMPORT_DIR, value) }
+}
+
+fun loadDontShowLargeFileTip(context: Context): Boolean {
+    return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        .getBoolean(KEY_DONT_SHOW_LARGE_FILE_TIP, false)
+}
+
+fun saveDontShowLargeFileTip(context: Context, value: Boolean) {
+    context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit { putBoolean(KEY_DONT_SHOW_LARGE_FILE_TIP, value) }
 }

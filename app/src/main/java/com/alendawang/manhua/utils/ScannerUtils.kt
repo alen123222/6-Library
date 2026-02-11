@@ -409,7 +409,7 @@ fun scanAudiosFlow(context: Context, rootTreeUri: Uri, existingUris: Set<String>
 }.flowOn(Dispatchers.IO)
 
 // 提取音频文件的内嵌封面 (使用分档压缩)
-private fun extractEmbeddedCover(context: Context, audioUri: Uri, fileName: String, totalItems: Int = Int.MAX_VALUE): String? {
+internal fun extractEmbeddedCover(context: Context, audioUri: Uri, fileName: String, totalItems: Int = Int.MAX_VALUE): String? {
     return try {
         val retriever = android.media.MediaMetadataRetriever()
         try {

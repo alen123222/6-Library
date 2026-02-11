@@ -646,6 +646,9 @@ suspend fun loadImagesFromPdf(context: Context, pdfUri: Uri): List<Uri> = withCo
                 val page = renderer.openPage(pageIndex)
                 val scale = 2
                 val bitmap = Bitmap.createBitmap(page.width * scale, page.height * scale, Bitmap.Config.ARGB_8888)
+                // 先填充白色背景，PdfRenderer不会绘制背景色
+                val canvas = android.graphics.Canvas(bitmap)
+                canvas.drawColor(android.graphics.Color.WHITE)
                 page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
                 page.close()
                 
@@ -711,6 +714,9 @@ suspend fun getCoverFromPdf(context: Context, pdfUri: Uri, totalItems: Int = Int
             val page = renderer.openPage(0)
             val scale = 2
             val bitmap = Bitmap.createBitmap(page.width * scale, page.height * scale, Bitmap.Config.ARGB_8888)
+            // 先填充白色背景，PdfRenderer不会绘制背景色
+            val canvas = android.graphics.Canvas(bitmap)
+            canvas.drawColor(android.graphics.Color.WHITE)
             page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
             page.close()
             

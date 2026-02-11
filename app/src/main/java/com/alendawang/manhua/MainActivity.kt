@@ -34,6 +34,10 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material.icons.rounded.*
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.Sort
+import androidx.compose.material.icons.automirrored.rounded.HelpOutline
+import androidx.compose.material.icons.automirrored.rounded.MenuBook
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshotFlow
@@ -123,8 +127,8 @@ import com.alendawang.manhua.utils.*
 import com.alendawang.manhua.viewmodel.NovelReaderViewModel
 
 class MainActivity : FragmentActivity() {
-    private var pendingAudioNavigation: Triple<String, Int, Long>? = null
-    private var pendingFileUri: Uri? = null
+    private var pendingAudioNavigation by androidx.compose.runtime.mutableStateOf<Triple<String, Int, Long>?>(null)
+    private var pendingFileUri by androidx.compose.runtime.mutableStateOf<Uri?>(null)
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -158,10 +162,6 @@ class MainActivity : FragmentActivity() {
         // 处理文件打开 Intent (ACTION_VIEW)
         if (intent.action == Intent.ACTION_VIEW) {
             intent.data?.let { uri ->
-                // 尝试获取持久化权限
-                try {
-                    contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                } catch (_: Exception) {}
                 pendingFileUri = uri
             }
         }
@@ -340,36 +340,158 @@ fun ComicApp(
         }
     }
     
-    // 处理文件打开 Intent
+    // --- 外部文件导入状态 ---
+    var showLargeFileTipDialog by remember { mutableStateOf(false) }
+    var showImportDirDialog by remember { mutableStateOf(false) }
+    var dontShowLargeFileTip by remember { mutableStateOf(loadDontShowLargeFileTip(context)) }
+    var dontAskImportDir by remember { mutableStateOf(loadDontAskImportDir(context)) }
+    var importTreeUri by remember { mutableStateOf(loadImportTreeUri(context)) }
+    // 暂存待处理的原始URI，等对话框流程完成后再执行复制
+    var pendingImportUri by remember { mutableStateOf<Uri?>(null) }
+    // 标记大文件提示已确认
+    var largeFileTipConfirmed by remember { mutableStateOf(false) }
+    // 标记目录已选定
+    var importDirReady by remember { mutableStateOf(false) }
+
+    // 获取文件真实名称的辅助函数
+    fun getDisplayName(uri: Uri): String {
+        try {
+            context.contentResolver.query(
+                uri,
+                arrayOf(android.provider.OpenableColumns.DISPLAY_NAME),
+                null, null, null
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val idx = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    if (idx >= 0) return cursor.getString(idx)
+                }
+            }
+        } catch (_: Exception) {}
+        return uri.lastPathSegment?.substringAfterLast('/') ?: "unknown_${System.currentTimeMillis()}"
+    }
+
+    // 目录选择器
+    val importDirLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { treeUri ->
+        if (treeUri != null) {
+            val takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            try { context.contentResolver.takePersistableUriPermission(treeUri, takeFlags) } catch (_: Exception) {}
+            val uriString = treeUri.toString()
+            importTreeUri = uriString
+            saveImportTreeUri(context, uriString)
+            // 目录选择完毕后，如果用户勾选了"不再询问"，保存
+            if (dontAskImportDir) {
+                saveDontAskImportDir(context, true)
+            }
+            importDirReady = true
+        } else {
+            // 用户取消了目录选择，取消导入
+            pendingImportUri = null
+            onFileUriConsumed()
+        }
+    }
+
+    // 步骤1: 接收外部URI → 开始导入流程
     LaunchedEffect(pendingFileUri) {
         if (pendingFileUri == null) return@LaunchedEffect
-        
-        val uri = pendingFileUri
-        val fileName = uri.lastPathSegment?.substringAfterLast('/') ?: "Unknown"
+        val uri = pendingFileUri!!
+        pendingImportUri = uri
+        largeFileTipConfirmed = false
+        importDirReady = false
+
+        if (dontShowLargeFileTip) {
+            largeFileTipConfirmed = true
+        } else {
+            showLargeFileTipDialog = true
+        }
+    }
+
+    // 步骤2: 大文件提示确认后 → 检查目录
+    LaunchedEffect(largeFileTipConfirmed) {
+        if (!largeFileTipConfirmed || pendingImportUri == null) return@LaunchedEffect
+
+        val savedUri = importTreeUri
+        if (savedUri != null && dontAskImportDir) {
+            importDirReady = true
+        } else {
+            showImportDirDialog = true
+        }
+    }
+
+    // 步骤3: 目录确定后 → 复制文件并创建记录
+    LaunchedEffect(importDirReady) {
+        if (!importDirReady || pendingImportUri == null) return@LaunchedEffect
+
+        val originalUri = pendingImportUri!!
+        val treeUriStr = importTreeUri
+
+        if (treeUriStr == null) {
+            // 没有目录，无法复制
+            pendingImportUri = null
+            onFileUriConsumed()
+            return@LaunchedEffect
+        }
+
+        val fileName = getDisplayName(originalUri)
         val ext = fileName.substringAfterLast('.', "").lowercase()
         val currentTime = System.currentTimeMillis()
-        
+
+        // 在IO线程复制文件
+        val localUri = withContext(Dispatchers.IO) {
+            try {
+                val treeUri = treeUriStr.toUri()
+                val treeDoc = androidx.documentfile.provider.DocumentFile.fromTreeUri(context, treeUri)
+                if (treeDoc == null || !treeDoc.canWrite()) {
+                    return@withContext originalUri // 目录不可写，回退
+                }
+
+                // 检查文件是否已存在
+                var doc = treeDoc.findFile(fileName)
+                if (doc == null) {
+                    val mimeType = android.webkit.MimeTypeMap.getSingleton()
+                        .getMimeTypeFromExtension(ext) ?: "application/octet-stream"
+                    doc = treeDoc.createFile(mimeType, fileName)
+                    if (doc == null) return@withContext originalUri
+
+                    // 复制文件内容
+                    context.contentResolver.openInputStream(originalUri)?.use { input ->
+                        context.contentResolver.openOutputStream(doc.uri)?.use { output ->
+                            input.copyTo(output)
+                            output.flush()
+                        }
+                    }
+                }
+                doc.uri
+            } catch (e: Exception) {
+                e.printStackTrace()
+                originalUri // 出错回退到原始URI
+            }
+        }
+
+        val localUriString = localUri.toString()
+        val itemName = fileName.substringBeforeLast('.')
+
         when {
             // 漫画文件: zip, cbz, cbr, rar, pdf
             ext in listOf("zip", "cbz", "cbr", "rar", "pdf") -> {
                 val sourceType = getComicSourceType(fileName)
-                val comicName = fileName.substringBeforeLast('.')
-                val uriString = uri.toString()
-                
-                // 检查是否已存在
-                val existing = comicHistoryList.find { it.uriString == uriString }
+                val existing = comicHistoryList.find { it.uriString == localUriString }
                 if (existing != null) {
-                    // 已存在，直接打开详情页
                     currentMediaType = MediaType.COMIC
                     currentScreen = Screen.Details(MediaType.COMIC, existing.id)
                 } else {
-                    // 创建新的历史记录
-                    val chapters = listOf(ComicChapter("全一册", uriString, sourceType))
+                    // 提取封面
+                    val coverUri = when (sourceType) {
+                        ComicSourceType.ZIP -> getCoverFromZip(context, localUri)
+                        ComicSourceType.RAR -> getCoverFromRar(context, localUri)
+                        ComicSourceType.PDF -> getCoverFromPdf(context, localUri)
+                        else -> null
+                    }
+                    val chapters = listOf(ComicChapter("全一册", localUriString, sourceType))
                     val newComic = ComicHistory(
-                        id = uriString,
-                        name = comicName,
-                        uriString = uriString,
-                        coverUriString = null,
+                        id = localUriString,
+                        name = itemName,
+                        uriString = localUriString,
+                        coverUriString = coverUri,
                         timestamp = currentTime,
                         chapters = chapters,
                         lastScannedAt = currentTime
@@ -381,22 +503,32 @@ fun ComicApp(
             }
             // 小说文件: txt, epub
             ext in listOf("txt", "epub") -> {
-                val novelName = fileName.substringBeforeLast('.')
-                val uriString = uri.toString()
-                
-                // 检查是否已存在
-                val existing = novelHistoryList.find { it.uriString == uriString }
+                val existing = novelHistoryList.find { it.uriString == localUriString }
                 if (existing != null) {
                     currentMediaType = MediaType.NOVEL
                     currentScreen = Screen.Details(MediaType.NOVEL, existing.id)
                 } else {
-                    // 创建新的历史记录
-                    val chapters = listOf(NovelChapter(novelName, uriString))
+                    val isEpub = ext == "epub"
+                    var coverUri: String? = null
+                    var chapters: List<NovelChapter>
+                    if (isEpub) {
+                        // EPUB: 解析章节并提取封面
+                        val epubResult = withContext(Dispatchers.IO) { parseEpubFile(context, localUri) }
+                        if (epubResult != null) {
+                            chapters = epubResult.first
+                            coverUri = epubResult.second
+                        } else {
+                            chapters = listOf(NovelChapter(itemName, localUriString, isEpubChapter = true))
+                        }
+                    } else {
+                        // TXT: 无封面
+                        chapters = listOf(NovelChapter(itemName, localUriString))
+                    }
                     val newNovel = NovelHistory(
-                        id = uriString,
-                        name = novelName,
-                        uriString = uriString,
-                        coverUriString = null,
+                        id = localUriString,
+                        name = itemName,
+                        uriString = localUriString,
+                        coverUriString = coverUri,
                         timestamp = currentTime,
                         chapters = chapters
                     )
@@ -407,25 +539,19 @@ fun ComicApp(
             }
             // 音频文件
             ext in listOf("mp3", "flac", "wav", "ogg", "m4a", "aac", "wma") -> {
-                val audioName = fileName.substringBeforeLast('.')
-                val uriString = uri.toString()
-                
-                // 检查是否已存在
-                val existing = audioHistoryList.find { it.uriString == uriString }
+                val existing = audioHistoryList.find { it.uriString == localUriString }
                 if (existing != null) {
                     currentMediaType = MediaType.AUDIO
                     currentScreen = Screen.AudioPlayer(existing.id, 0, 0L)
                 } else {
-                    // 创建新的历史记录
-                    val track = AudioTrack(
-                        name = audioName,
-                        uriString = uriString
-                    )
+                    // 提取音频内嵌封面
+                    val coverUri = withContext(Dispatchers.IO) { extractEmbeddedCover(context, localUri, fileName) }
+                    val track = AudioTrack(name = itemName, uriString = localUriString)
                     val newAudio = AudioHistory(
-                        id = uriString,
-                        name = audioName,
-                        uriString = uriString,
-                        coverUriString = null,
+                        id = localUriString,
+                        name = itemName,
+                        uriString = localUriString,
+                        coverUriString = coverUri,
                         timestamp = currentTime,
                         tracks = listOf(track)
                     )
@@ -435,8 +561,104 @@ fun ComicApp(
                 }
             }
         }
-        
+
+        pendingImportUri = null
+        importDirReady = false
+        largeFileTipConfirmed = false
         onFileUriConsumed()
+    }
+
+    // --- 大文件提示对话框 ---
+    if (showLargeFileTipDialog) {
+        var checked by remember { mutableStateOf(false) }
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = {
+                showLargeFileTipDialog = false
+                // 用户取消，取消导入
+                pendingImportUri = null
+                onFileUriConsumed()
+            },
+            icon = { androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.Info, null) },
+            title = { androidx.compose.material3.Text("导入提示") },
+            text = {
+                Column {
+                    androidx.compose.material3.Text(
+                        "从外部打开的文件将被复制到您指定的目录中以确保持久访问。\n\n" +
+                        "⚠️ 大文件（如大型漫画文件zip等）建议手动在文件管理器中移动到特定目录，然后使用App扫描功能添加，避免存储空间浪费。"
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Row(
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                        modifier = Modifier.clickable { checked = !checked }
+                    ) {
+                        androidx.compose.material3.Checkbox(checked = checked, onCheckedChange = { checked = it })
+                        Spacer(Modifier.width(4.dp))
+                        androidx.compose.material3.Text("不再提示", style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    if (checked) {
+                        dontShowLargeFileTip = true
+                        saveDontShowLargeFileTip(context, true)
+                    }
+                    showLargeFileTipDialog = false
+                    largeFileTipConfirmed = true
+                }) { androidx.compose.material3.Text("确定") }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    showLargeFileTipDialog = false
+                    pendingImportUri = null
+                    onFileUriConsumed()
+                }) { androidx.compose.material3.Text("取消") }
+            }
+        )
+    }
+
+    // --- 导入目录选择对话框 ---
+    if (showImportDirDialog) {
+        var checked by remember { mutableStateOf(dontAskImportDir) }
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = {
+                showImportDirDialog = false
+                pendingImportUri = null
+                onFileUriConsumed()
+            },
+            icon = { androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.FolderOpen, null) },
+            title = { androidx.compose.material3.Text("选择存储目录") },
+            text = {
+                Column {
+                    androidx.compose.material3.Text(
+                        "请选择一个目录用于存放从外部导入的文件。"
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Row(
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                        modifier = Modifier.clickable { checked = !checked }
+                    ) {
+                        androidx.compose.material3.Checkbox(checked = checked, onCheckedChange = { checked = it })
+                        Spacer(Modifier.width(4.dp))
+                        androidx.compose.material3.Text("后续资源同样存放此目录", style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    dontAskImportDir = checked
+                    showImportDirDialog = false
+                    importDirLauncher.launch(null)
+                }) { androidx.compose.material3.Text("选择目录") }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    showImportDirDialog = false
+                    pendingImportUri = null
+                    onFileUriConsumed()
+                }) { androidx.compose.material3.Text("取消") }
+            }
+        )
     }
 
     val batchScanLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { treeUri ->
@@ -768,7 +990,7 @@ fun ComicApp(
                                     isSearchActive = false
                                     searchQuery = "" // 退出搜索时清空
                                 }) {
-                                    Icon(Icons.Rounded.ArrowBack, "退出搜索")
+                                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, "退出搜索")
                                 }
                             },
                             actions = {
@@ -996,7 +1218,7 @@ fun ComicApp(
                                                         showMoreMenu = false
                                                         showSortMenu = true 
                                                     },
-                                                    leadingIcon = { Icon(Icons.Rounded.Sort, null) }
+                                                    leadingIcon = { Icon(Icons.AutoMirrored.Rounded.Sort, null) }
                                                 )
                                                 
                                                 // 视图模式
@@ -1023,7 +1245,7 @@ fun ComicApp(
                                                         showHelpDialog = true
                                                         showMoreMenu = false
                                                     },
-                                                    leadingIcon = { Icon(Icons.Rounded.HelpOutline, null) }
+                                                    leadingIcon = { Icon(Icons.AutoMirrored.Rounded.HelpOutline, null) }
                                                 )
                                             }
 
@@ -1727,7 +1949,7 @@ fun ComicApp(
             },
             icon = {
                 when (currentMediaType) {
-                    MediaType.COMIC -> Icon(Icons.Rounded.MenuBook, null)
+                    MediaType.COMIC -> Icon(Icons.AutoMirrored.Rounded.MenuBook, null)
                     MediaType.NOVEL -> Icon(Icons.Rounded.Menu, null)
                     MediaType.AUDIO -> Icon(Icons.Rounded.Headphones, null)
                 }
