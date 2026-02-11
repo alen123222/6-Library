@@ -352,6 +352,8 @@ fun ComicApp(
     var largeFileTipConfirmed by remember { mutableStateOf(false) }
     // 标记目录已选定
     var importDirReady by remember { mutableStateOf(false) }
+    // 防重入标志：防止导入流程被重复触发
+    var isProcessingImport by remember { mutableStateOf(false) }
 
     // 获取文件真实名称的辅助函数
     fun getDisplayName(uri: Uri): String {
@@ -385,6 +387,7 @@ fun ComicApp(
             importDirReady = true
         } else {
             // 用户取消了目录选择，取消导入
+            isProcessingImport = false
             pendingImportUri = null
             onFileUriConsumed()
         }
@@ -393,7 +396,10 @@ fun ComicApp(
     // 步骤1: 接收外部URI → 开始导入流程
     LaunchedEffect(pendingFileUri) {
         if (pendingFileUri == null) return@LaunchedEffect
+        if (isProcessingImport) return@LaunchedEffect  // 防重入
+        isProcessingImport = true
         val uri = pendingFileUri!!
+        onFileUriConsumed()  // 立即消费，防止重复触发
         pendingImportUri = uri
         largeFileTipConfirmed = false
         importDirReady = false
@@ -521,8 +527,10 @@ fun ComicApp(
                             chapters = listOf(NovelChapter(itemName, localUriString, isEpubChapter = true))
                         }
                     } else {
-                        // TXT: 无封面
-                        chapters = listOf(NovelChapter(itemName, localUriString))
+                        // TXT: 读取并解析章节内容（与扫描流程一致）
+                        val rawText = withContext(Dispatchers.IO) { readNovelText(context, localUri) }
+                        chapters = rawText?.let { parseNovelChapters(it, localUriString, itemName) }
+                            ?: listOf(NovelChapter(itemName, localUriString))
                     }
                     val newNovel = NovelHistory(
                         id = localUriString,
@@ -565,7 +573,7 @@ fun ComicApp(
         pendingImportUri = null
         importDirReady = false
         largeFileTipConfirmed = false
-        onFileUriConsumed()
+        isProcessingImport = false
     }
 
     // --- 大文件提示对话框 ---
@@ -575,8 +583,8 @@ fun ComicApp(
             onDismissRequest = {
                 showLargeFileTipDialog = false
                 // 用户取消，取消导入
+                isProcessingImport = false
                 pendingImportUri = null
-                onFileUriConsumed()
             },
             icon = { androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.Info, null) },
             title = { androidx.compose.material3.Text("导入提示") },
@@ -610,8 +618,8 @@ fun ComicApp(
             dismissButton = {
                 androidx.compose.material3.TextButton(onClick = {
                     showLargeFileTipDialog = false
+                    isProcessingImport = false
                     pendingImportUri = null
-                    onFileUriConsumed()
                 }) { androidx.compose.material3.Text("取消") }
             }
         )
@@ -623,8 +631,8 @@ fun ComicApp(
         androidx.compose.material3.AlertDialog(
             onDismissRequest = {
                 showImportDirDialog = false
+                isProcessingImport = false
                 pendingImportUri = null
-                onFileUriConsumed()
             },
             icon = { androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.FolderOpen, null) },
             title = { androidx.compose.material3.Text("选择存储目录") },
@@ -654,8 +662,8 @@ fun ComicApp(
             dismissButton = {
                 androidx.compose.material3.TextButton(onClick = {
                     showImportDirDialog = false
+                    isProcessingImport = false
                     pendingImportUri = null
-                    onFileUriConsumed()
                 }) { androidx.compose.material3.Text("取消") }
             }
         )
