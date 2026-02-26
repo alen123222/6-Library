@@ -25,7 +25,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.forEachGesture
+import androidx.compose.ui.input.pointer.positionChanged
+import kotlin.math.sqrt
 import androidx.compose.foundation.gestures.scrollBy
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.update
@@ -160,28 +162,75 @@ fun ReaderScreen(
             .fillMaxSize()
             .padding(paddingValues)
             .background(Color(0xFF121212))
-            // 缩放手势检测
+            // 缩放手势检测（支持先单指触碰后第二指加入）
             .pointerInput(Unit) {
-                detectTransformGestures { _, pan, zoom, _ ->
-                    scale = (scale * zoom).coerceIn(1f, 2.5f)
-                    if (scale == 1f) {
-                        offset = androidx.compose.ui.geometry.Offset.Zero
-                    } else {
-                        // 只处理水平移动，垂直移动交给 LazyColumn 滚动
-                        val newX = offset.x + pan.x
-                        // 简单的边界限制
-                        val maxPanX = (screenWidth * scale - screenWidth) / 2
-                        offset = androidx.compose.ui.geometry.Offset(
-                            newX.coerceIn(-maxPanX, maxPanX),
-                            0f
-                        )
+                forEachGesture {
+                    awaitPointerEventScope {
+                        // 等待第一个手指按下
+                        awaitPointerEvent()
                         
-                        // 手动分发垂直滚动事件给 LazyListState
-                        if (pan.y != 0f) {
-                             scope.launch {
-                                 lazyListState.scrollBy(-pan.y)
-                             }
-                        }
+                        // 记录上一帧双指距离和中心点
+                        var prevDist = 0f
+                        var prevCenter = androidx.compose.ui.geometry.Offset.Zero
+                        var wasMultiTouch = false
+                        
+                        do {
+                            val event = awaitPointerEvent()
+                            val pressed = event.changes.filter { it.pressed }
+                            
+                            if (pressed.size >= 2) {
+                                // 双指或多指：计算缩放和平移
+                                val p1 = pressed[0].position
+                                val p2 = pressed[1].position
+                                val dx = p1.x - p2.x
+                                val dy = p1.y - p2.y
+                                val dist = sqrt(dx * dx + dy * dy)
+                                val center = androidx.compose.ui.geometry.Offset(
+                                    (p1.x + p2.x) / 2f,
+                                    (p1.y + p2.y) / 2f
+                                )
+                                
+                                if (wasMultiTouch && prevDist > 0f) {
+                                    // 计算缩放因子
+                                    val zoom = dist / prevDist
+                                    scale = (scale * zoom).coerceIn(1f, 2.5f)
+                                    
+                                    // 计算平移
+                                    val pan = center - prevCenter
+                                    
+                                    if (scale == 1f) {
+                                        offset = androidx.compose.ui.geometry.Offset.Zero
+                                    } else {
+                                        val newX = offset.x + pan.x
+                                        val maxPanX = (screenWidth * scale - screenWidth) / 2
+                                        offset = androidx.compose.ui.geometry.Offset(
+                                            newX.coerceIn(-maxPanX, maxPanX),
+                                            0f
+                                        )
+                                        
+                                        // 手动分发垂直滚动事件给 LazyListState
+                                        if (pan.y != 0f) {
+                                            scope.launch {
+                                                lazyListState.scrollBy(-pan.y)
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                // 消费所有触点的变化，阻止其他手势处理
+                                event.changes.forEach {
+                                    if (it.positionChanged()) it.consume()
+                                }
+                                
+                                prevDist = dist
+                                prevCenter = center
+                                wasMultiTouch = true
+                            } else {
+                                // 回到单指：重置多指状态
+                                prevDist = 0f
+                                wasMultiTouch = false
+                            }
+                        } while (event.changes.any { it.pressed })
                     }
                 }
             }
