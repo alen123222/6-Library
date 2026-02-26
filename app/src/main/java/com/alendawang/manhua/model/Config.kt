@@ -2,6 +2,13 @@ package com.alendawang.manhua.model
 
 import androidx.compose.ui.graphics.Color
 
+// --- 翻页模式 ---
+enum class PageFlipMode(val label: String) {
+    SCROLL("滚动"),
+    SLIDE("滑动翻页"),
+    SIMULATION("仿真翻页")
+}
+
 // --- 阅读器配置 ---
 data class ReaderConfig(
     val fontSize: Float = 18f,
@@ -12,7 +19,8 @@ data class ReaderConfig(
     val fontType: FontType = FontType.System,
     val customBackgroundUriString: String? = null,
     val customBackgroundOverlayAlpha: Float = 0.35f,
-    val customTextColor: Int? = null
+    val customTextColor: Int? = null,
+    val pageFlipMode: PageFlipMode = PageFlipMode.SCROLL
 )
 
 enum class ReaderBackgroundColor(val label: String, val color: Color, val textColor: Color) {

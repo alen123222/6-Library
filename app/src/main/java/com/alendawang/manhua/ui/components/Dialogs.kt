@@ -29,6 +29,7 @@ import androidx.compose.ui.window.Dialog
 import com.alendawang.manhua.model.AudioPlayerConfig
 import com.alendawang.manhua.model.FontType
 import com.alendawang.manhua.model.ReaderBackgroundColor
+import com.alendawang.manhua.model.PageFlipMode
 import com.alendawang.manhua.model.ReaderConfig
 
 // --- 密码对话框 ---
@@ -292,6 +293,23 @@ fun NovelSettingsDialog(
                             )
                         }
                 }
+
+                    // 翻页模式
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("翻页模式")
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        PageFlipMode.values().forEach { mode ->
+                            FilterChip(
+                                selected = config.pageFlipMode == mode,
+                                onClick = { onConfigChange(config.copy(pageFlipMode = mode)) },
+                                label = { Text(mode.label, fontSize = 12.sp) }
+                            )
+                        }
+                    }
                 }
             }
         },

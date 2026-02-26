@@ -60,6 +60,8 @@ import com.alendawang.manhua.model.*
 import com.alendawang.manhua.ui.components.*
 import com.alendawang.manhua.utils.*
 import com.alendawang.manhua.viewmodel.NovelReaderViewModel
+import com.alendawang.manhua.ui.reader.PageDirection
+import com.alendawang.manhua.ui.reader.ReadView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
@@ -242,10 +244,17 @@ fun NovelReaderScreen(
         derivedStateOf { loadedChapters.flatMap { it.paragraphs } }
     }
 
-    val currentChapterIndex by remember(chapterStarts, listState) {
-        derivedStateOf {
-            val itemIndex = listState.firstVisibleItemIndex
-            chapterStarts.lastOrNull { itemIndex >= it.second }?.first ?: chapterIndex
+    // 当前章节索引 - 两种模式共用
+    var currentChapterIndex by remember { mutableIntStateOf(chapterIndex) }
+
+    // 滚动模式：从 listState 推导章节索引（翻页模式下不使用 listState，跳过）
+    val pageFlipModeForTracking = viewModel.config.pageFlipMode
+    LaunchedEffect(chapterStarts.toList(), listState.firstVisibleItemIndex, pageFlipModeForTracking) {
+        if (pageFlipModeForTracking != PageFlipMode.SCROLL) return@LaunchedEffect
+        val itemIndex = listState.firstVisibleItemIndex
+        val derived = chapterStarts.lastOrNull { itemIndex >= it.second }?.first ?: chapterIndex
+        if (derived != currentChapterIndex) {
+            currentChapterIndex = derived
         }
     }
 
@@ -389,6 +398,47 @@ fun NovelReaderScreen(
                     }
                 )
             }
+            val isPageFlipMode = viewModel.config.pageFlipMode != PageFlipMode.SCROLL
+
+            fun requestChapterScroll(targetIndex: Int, targetPosition: Int) {
+                scrollScope.launch {
+                    loadChapterBlock(targetIndex)
+                    if (isPageFlipMode) {
+                        // 翻页模式直接跳到第一页
+                        viewModel.jumpToPage(0)
+                    } else {
+                        if (targetIndex + 1 <= novel.chapters.lastIndex) {
+                            preloadScope.launch { loadChapterBlock(targetIndex + 1) }
+                        }
+                        if (paragraphs.isEmpty()) return@launch
+                        val start = chapterStarts.firstOrNull { it.first == targetIndex }?.second
+                            ?: snapshotFlow { chapterStarts.firstOrNull { it.first == targetIndex }?.second }
+                                .filter { it != null }
+                                .first()!!
+                        val chapterParagraphs = loadedChapters.firstOrNull { it.chapterIndex == targetIndex }?.paragraphs
+                            ?: emptyList()
+                        val (relIndex, offset) = if (isPackedProgress(targetPosition)) {
+                            unpackScrollProgress(targetPosition)
+                        } else if (targetPosition > 0) {
+                            estimateIndexFromLegacyPx(
+                                legacyPx = targetPosition,
+                                paragraphs = chapterParagraphs,
+                                textMeasurer = textMeasurer,
+                                textStyle = textStyle,
+                                widthPx = availableWidthPx,
+                                paragraphSpacingPx = paragraphSpacingPx
+                            )
+                        } else {
+                            0 to 0
+                        }
+                        val targetItemIndex = (start + relIndex).coerceIn(0, paragraphs.lastIndex)
+                        listState.scrollToItem(targetItemIndex, offset)
+                    }
+                }
+            }
+
+            if (!isPageFlipMode) {
+            // ===== SCROLL 模式（原有 LazyColumn）=====
             val scrollProgress by remember(paragraphs) {
                 derivedStateOf {
                     val totalItems = paragraphs.size
@@ -458,37 +508,6 @@ fun NovelReaderScreen(
                 initialScrollApplied = true
             }
 
-            fun requestChapterScroll(targetIndex: Int, targetPosition: Int) {
-                scrollScope.launch {
-                    loadChapterBlock(targetIndex)
-                    if (targetIndex + 1 <= novel.chapters.lastIndex) {
-                        preloadScope.launch { loadChapterBlock(targetIndex + 1) }
-                    }
-                    if (paragraphs.isEmpty()) return@launch
-                    val start = chapterStarts.firstOrNull { it.first == targetIndex }?.second
-                        ?: snapshotFlow { chapterStarts.firstOrNull { it.first == targetIndex }?.second }
-                            .filter { it != null }
-                            .first()!!
-                    val chapterParagraphs = loadedChapters.firstOrNull { it.chapterIndex == targetIndex }?.paragraphs
-                        ?: emptyList()
-                    val (relIndex, offset) = if (isPackedProgress(targetPosition)) {
-                        unpackScrollProgress(targetPosition)
-                    } else if (targetPosition > 0) {
-                        estimateIndexFromLegacyPx(
-                            legacyPx = targetPosition,
-                            paragraphs = chapterParagraphs,
-                            textMeasurer = textMeasurer,
-                            textStyle = textStyle,
-                            widthPx = availableWidthPx,
-                            paragraphSpacingPx = paragraphSpacingPx
-                        )
-                    } else {
-                        0 to 0
-                    }
-                    val targetItemIndex = (start + relIndex).coerceIn(0, paragraphs.lastIndex)
-                    listState.scrollToItem(targetItemIndex, offset)
-                }
-            }
 
             LazyColumn(
                 modifier = Modifier
@@ -571,6 +590,129 @@ fun NovelReaderScreen(
                     }
                 }
             }
+            } else {
+                // ===== SLIDE / SIMULATION 翻页模式 =====
+                // 获取章节内容：优先用 currentChapterText，EPUB 场景从 loadedChapters 提取
+                val currentChapterContent = remember(currentChapterText, currentChapterIndex, loadedChapters.size) {
+                    if (currentChapterText != null) {
+                        currentChapterText!!
+                    } else {
+                        // EPUB 或其他情况：从 loadedChapters 提取纯文本
+                        val block = loadedChapters.firstOrNull { it.chapterIndex == currentChapterIndex }
+                        if (block != null) {
+                            if (block.isEpub && block.epubParts != null) {
+                                block.epubParts.joinToString("\n\n") { it.toString() }
+                            } else {
+                                block.paragraphs.joinToString("\n\n")
+                            }
+                        } else {
+                            ""
+                        }
+                    }
+                }
+                LaunchedEffect(currentChapterContent, viewModel.config, currentChapterIndex) {
+                    if (currentChapterContent.isNotEmpty()) {
+                        val title = novel.chapters.getOrNull(currentChapterIndex)?.name ?: ""
+                        viewModel.loadChapter(currentChapterContent, title)
+                    }
+                }
+
+                // Bitmap 需要不透明背景（仿真翻页动画需要完整页面）
+                val bgColorInt = remember(viewModel.config) {
+                    val c = viewModel.config.backgroundColor.color
+                    android.graphics.Color.argb(
+                        (c.alpha * 255).toInt(),
+                        (c.red * 255).toInt(),
+                        (c.green * 255).toInt(),
+                        (c.blue * 255).toInt()
+                    )
+                }
+
+                val curPage = viewModel.pages.getOrNull(viewModel.currentPageIndex)
+                val prevPageData = viewModel.pages.getOrNull(viewModel.currentPageIndex - 1)
+                val nextPageData = viewModel.pages.getOrNull(viewModel.currentPageIndex + 1)
+                val pageProgressInfo = viewModel.getProgressText()
+
+                // 底层 ReaderBackground + 上层 ReadView
+                Box(modifier = Modifier.fillMaxSize()) {
+                ReaderBackground(
+                    config = viewModel.config,
+                    modifier = Modifier.fillMaxSize()
+                )
+                AndroidView(
+                    factory = { ctx ->
+                        ReadView(ctx).apply {
+                            setReaderConfig(viewModel.config)
+                            setBgColor(bgColorInt)
+                            setPageData(prevPageData, curPage, nextPageData, pageProgressInfo)
+                            onPageChangeListener = object : ReadView.OnPageChangeListener {
+                                override fun onPageChanged(direction: PageDirection) {
+                                    when (direction) {
+                                        PageDirection.NEXT -> {
+                                            if (!viewModel.nextPage()) {
+                                                // 本章没有下一页了，切换到下一章
+                                                val nextChapterIdx = currentChapterIndex + 1
+                                                if (nextChapterIdx < novel.chapters.size) {
+                                                    currentChapterIndex = nextChapterIdx
+                                                    requestChapterScroll(nextChapterIdx, 0)
+                                                }
+                                            }
+                                        }
+                                        PageDirection.PREV -> {
+                                            if (!viewModel.prevPage()) {
+                                                // 本章没有上一页了，切换到上一章
+                                                val prevChapterIdx = currentChapterIndex - 1
+                                                if (prevChapterIdx >= 0) {
+                                                    currentChapterIndex = prevChapterIdx
+                                                    requestChapterScroll(prevChapterIdx, 0)
+                                                    // 跳到上一章的最后一页
+                                                    scrollScope.launch {
+                                                        // 等 loadChapter 完成后跳到最后一页
+                                                        kotlinx.coroutines.delay(100)
+                                                        viewModel.jumpToPage(maxOf(0, viewModel.pages.size - 1))
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        else -> Unit
+                                    }
+                                    // 更新页面数据给 ReadView 显示
+                                    val newCur = viewModel.pages.getOrNull(viewModel.currentPageIndex)
+                                    val newPrev = viewModel.pages.getOrNull(viewModel.currentPageIndex - 1)
+                                    val newNext = viewModel.pages.getOrNull(viewModel.currentPageIndex + 1)
+                                    setPageData(newPrev, newCur, newNext, viewModel.getProgressText())
+                                }
+                                override fun hasNextPage(): Boolean = viewModel.currentPageIndex < viewModel.pages.size - 1
+                                    || currentChapterIndex < novel.chapters.size - 1
+                                override fun hasPrevPage(): Boolean = viewModel.currentPageIndex > 0
+                                    || currentChapterIndex > 0
+                            }
+                            onTapCenterListener = {
+                                viewModel.showMenu = !viewModel.showMenu
+                                if (viewModel.showMenu != isBarsVisible) {
+                                    onToggleBars()
+                                }
+                            }
+                        }
+                    },
+                    update = { rv ->
+                        rv.setReaderConfig(viewModel.config)
+                        rv.setBgColor(bgColorInt)
+                        rv.setPageData(
+                            viewModel.pages.getOrNull(viewModel.currentPageIndex - 1),
+                            viewModel.pages.getOrNull(viewModel.currentPageIndex),
+                            viewModel.pages.getOrNull(viewModel.currentPageIndex + 1),
+                            viewModel.getProgressText()
+                        )
+                    },
+                    modifier = Modifier.fillMaxSize()
+                )
+                } // Box
+
+                LaunchedEffect(Unit) {
+                    initialScrollApplied = true
+                }
+            }
 
             // 底部状态栏（Legado 风格）
             AnimatedVisibility(
@@ -618,6 +760,9 @@ fun NovelReaderScreen(
                             }
                         }
                         // 阅读进度条
+                        val currentProgress = if (isPageFlipMode) {
+                            viewModel.getCurrentProgress()
+                        } else {
                         val currentChapterInfo = chapterStarts.firstOrNull { it.first == currentChapterIndex }
                         val currentStart = currentChapterInfo?.second ?: 0
                         val currentSize = currentChapterInfo?.third ?: paragraphs.size
@@ -625,13 +770,14 @@ fun NovelReaderScreen(
                         val itemSize = (visibleItem?.size ?: 1).coerceAtLeast(1)
                         val offsetFraction = (listState.firstVisibleItemScrollOffset.toFloat() / itemSize)
                             .coerceIn(0f, 1f)
-                        val currentProgress = if (currentSize <= 0) {
+                            if (currentSize <= 0) {
                             0f
                         } else {
                             val relativeIndex = (listState.firstVisibleItemIndex - currentStart)
                                 .coerceIn(0, currentSize - 1)
                             val current = (relativeIndex + offsetFraction).coerceIn(0f, currentSize.toFloat())
                             (current / currentSize.toFloat()).coerceIn(0f, 1f)
+                            }
                         }
                         val displayProgress = if (isProgressDragging) {
                             progressDragValue.coerceIn(0f, 1f)
@@ -643,25 +789,28 @@ fun NovelReaderScreen(
                             onValueChange = { value ->
                                 isProgressDragging = true
                                 progressDragValue = value.coerceIn(0f, 1f)
-                                if (paragraphs.isNotEmpty() && currentSize > 0) {
-                                    val target = (progressDragValue * currentSize).coerceIn(0f, currentSize.toFloat())
-                                    val relativeIndex = target.toInt().coerceIn(0, currentSize - 1)
+                                if (isPageFlipMode) {
+                                    val targetPage = (progressDragValue * viewModel.pages.size).toInt()
+                                        .coerceIn(0, maxOf(0, viewModel.pages.size - 1))
+                                    viewModel.jumpToPage(targetPage)
+                                } else {
+                                val currentChapterInfo2 = chapterStarts.firstOrNull { it.first == currentChapterIndex }
+                                val currentStart2 = currentChapterInfo2?.second ?: 0
+                                val currentSize2 = currentChapterInfo2?.third ?: paragraphs.size
+                                if (paragraphs.isNotEmpty() && currentSize2 > 0) {
+                                    val target = (progressDragValue * currentSize2).coerceIn(0f, currentSize2.toFloat())
+                                    val relativeIndex = target.toInt().coerceIn(0, currentSize2 - 1)
                                     val fraction = (target - relativeIndex).coerceIn(0f, 1f)
-                                    val targetIndex = (currentStart + relativeIndex).coerceIn(0, paragraphs.lastIndex)
-                                    val targetOffset = (itemSize * fraction).roundToInt()
+                                    val targetIndex = (currentStart2 + relativeIndex).coerceIn(0, paragraphs.lastIndex)
+                                    val visItem = listState.layoutInfo.visibleItemsInfo.firstOrNull()
+                                    val iSize = (visItem?.size ?: 1).coerceAtLeast(1)
+                                    val targetOffset = (iSize * fraction).roundToInt()
                                     scrollScope.launch { listState.scrollToItem(targetIndex, targetOffset) }
+                                }
                                 }
                             },
                             onValueChangeFinished = {
                                 isProgressDragging = false
-                                if (paragraphs.isNotEmpty() && currentSize > 0) {
-                                    val target = (progressDragValue * currentSize).coerceIn(0f, currentSize.toFloat())
-                                    val relativeIndex = target.toInt().coerceIn(0, currentSize - 1)
-                                    val fraction = (target - relativeIndex).coerceIn(0f, 1f)
-                                    val targetIndex = (currentStart + relativeIndex).coerceIn(0, paragraphs.lastIndex)
-                                    val targetOffset = (itemSize * fraction).roundToInt()
-                                    scrollScope.launch { listState.scrollToItem(targetIndex, targetOffset) }
-                                }
                             },
                             colors = SliderDefaults.colors(
                                 activeTrackColor = Color.White,
