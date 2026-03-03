@@ -9,6 +9,13 @@ enum class PageFlipMode(val label: String) {
     SIMULATION("仿真翻页")
 }
 
+// --- 漫画阅读模式 ---
+enum class ComicReadMode(val label: String) {
+    SCROLL("滚动"),
+    SLIDE("滑动翻页"),
+    SIMULATION("仿真翻页")
+}
+
 // --- 阅读器配置 ---
 data class ReaderConfig(
     val fontSize: Float = 18f,

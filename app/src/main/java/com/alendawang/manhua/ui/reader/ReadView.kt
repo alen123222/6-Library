@@ -21,7 +21,7 @@ class ReadView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
-) : View(context, attrs, defStyleAttr) {
+) : View(context, attrs, defStyleAttr), PageView {
 
     var pageDelegate: PageDelegate? = null
         private set(value) {
@@ -30,22 +30,23 @@ class ReadView @JvmOverloads constructor(
             field = value
         }
 
-    val defaultAnimationSpeed = 300
-    val pageSlopSquare: Int by lazy { ViewConfiguration.get(context).scaledTouchSlop }
+    override fun getViewContext(): android.content.Context = context
+    override val defaultAnimationSpeed = 300
+    override val pageSlopSquare: Int by lazy { ViewConfiguration.get(context).scaledTouchSlop }
 
     // 触摸点
-    var startX = 0f
-    var startY = 0f
-    var lastX = 0f
-    var lastY = 0f
-    var touchX = 0f
-    var touchY = 0f
+    override var startX = 0f
+    override var startY = 0f
+    override var lastX = 0f
+    override var lastY = 0f
+    override var touchX = 0f
+    override var touchY = 0f
 
     // 状态
     private var pressDown = false
     private var isMove = false
     private val slopSquare by lazy { ViewConfiguration.get(context).scaledTouchSlop }
-    var isAbortAnim = false
+    override var isAbortAnim = false
 
     // 页面数据
     private var prevPageContent: PageContent? = null
@@ -151,25 +152,28 @@ class ReadView @JvmOverloads constructor(
         bitmapsDirty = false
     }
 
-    fun getPrevBitmap(): Bitmap? {
+    override fun getPrevBitmap(): Bitmap? {
         ensureBitmaps()
         return cachedPrevBitmap
     }
 
-    fun getCurBitmap(): Bitmap? {
+    override fun getCurBitmap(): Bitmap? {
         ensureBitmaps()
         return cachedCurBitmap
     }
 
-    fun getNextBitmap(): Bitmap? {
+    override fun getNextBitmap(): Bitmap? {
         ensureBitmaps()
         return cachedNextBitmap
     }
 
-    fun hasNextPage(): Boolean = onPageChangeListener?.hasNextPage() ?: false
-    fun hasPrevPage(): Boolean = onPageChangeListener?.hasPrevPage() ?: false
+    override fun hasNextPage(): Boolean = onPageChangeListener?.hasNextPage() ?: false
+    override fun hasPrevPage(): Boolean = onPageChangeListener?.hasPrevPage() ?: false
 
-    fun fillPage(direction: PageDirection) {
+    override fun getViewWidth(): Int = width
+    override fun getViewHeight(): Int = height
+
+    override fun fillPage(direction: PageDirection) {
         // 先停止动画状态，避免 delegate 在下一帧继续用旧 bitmap 绘制
         pageDelegate?.let {
             it.isRunning = false
@@ -205,7 +209,7 @@ class ReadView @JvmOverloads constructor(
         onPageChangeListener?.onPageChanged(direction)
     }
 
-    fun setStartPoint(x: Float, y: Float, invalidateView: Boolean = true) {
+    override fun setStartPoint(x: Float, y: Float, invalidateView: Boolean) {
         startX = x
         startY = y
         lastX = x
@@ -215,7 +219,7 @@ class ReadView @JvmOverloads constructor(
         if (invalidateView) invalidate()
     }
 
-    fun setTouchPoint(x: Float, y: Float, invalidateView: Boolean = true) {
+    override fun setTouchPoint(x: Float, y: Float, invalidateView: Boolean) {
         lastX = touchX
         lastY = touchY
         touchX = x

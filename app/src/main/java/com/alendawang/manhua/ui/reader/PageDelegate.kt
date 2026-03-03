@@ -16,20 +16,20 @@ enum class PageDirection {
  * 翻页策略基类
  * 参考 Legado 的 PageDelegate 设计
  */
-abstract class PageDelegate(protected val readView: ReadView) {
+abstract class PageDelegate(protected val pageView: PageView) {
 
-    protected val startX: Float get() = readView.startX
-    protected val startY: Float get() = readView.startY
-    protected val lastX: Float get() = readView.lastX
-    protected val lastY: Float get() = readView.lastY
-    protected val touchX: Float get() = readView.touchX
-    protected val touchY: Float get() = readView.touchY
+    protected val startX: Float get() = pageView.startX
+    protected val startY: Float get() = pageView.startY
+    protected val lastX: Float get() = pageView.lastX
+    protected val lastY: Float get() = pageView.lastY
+    protected val touchX: Float get() = pageView.touchX
+    protected val touchY: Float get() = pageView.touchY
 
     protected var viewWidth: Int = 0
     protected var viewHeight: Int = 0
 
     protected val scroller: Scroller by lazy {
-        Scroller(readView.context, LinearInterpolator())
+        Scroller(pageView.getViewContext(), LinearInterpolator())
     }
 
     var isMoved = false
@@ -48,15 +48,15 @@ abstract class PageDelegate(protected val readView: ReadView) {
         scroller.startScroll(startX, startY, dx, dy, duration)
         isRunning = true
         isStarted = true
-        readView.invalidate()
+        pageView.invalidate()
     }
 
     protected fun stopScroll() {
         isStarted = false
-        readView.post {
+        pageView.post {
             isMoved = false
             isRunning = false
-            readView.invalidate()
+            pageView.invalidate()
         }
     }
 
@@ -67,7 +67,7 @@ abstract class PageDelegate(protected val readView: ReadView) {
 
     open fun computeScroll() {
         if (scroller.computeScrollOffset()) {
-            readView.setTouchPoint(scroller.currX.toFloat(), scroller.currY.toFloat())
+            pageView.setTouchPoint(scroller.currX.toFloat(), scroller.currY.toFloat())
         } else if (isStarted) {
             onAnimStop()
             stopScroll()
@@ -97,8 +97,9 @@ abstract class PageDelegate(protected val readView: ReadView) {
         setDirection(PageDirection.NONE)
     }
 
-    fun hasPrev(): Boolean = readView.hasPrevPage()
-    fun hasNext(): Boolean = readView.hasNextPage()
+    fun hasPrev(): Boolean = pageView.hasPrevPage()
+    fun hasNext(): Boolean = pageView.hasNextPage()
 
     open fun onDestroy() {}
 }
+

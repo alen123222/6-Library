@@ -1,6 +1,7 @@
 package com.alendawang.manhua.ui.screens
 
 import android.content.Intent
+import android.graphics.Bitmap
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -32,6 +33,7 @@ import androidx.compose.foundation.gestures.scrollBy
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -44,17 +46,25 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import coil.ImageLoader
 import coil.compose.AsyncImage
 import coil.request.CachePolicy
 import coil.request.ImageRequest
+import coil.request.SuccessResult
 import com.alendawang.manhua.R
 import com.alendawang.manhua.model.AudioHistory
 import com.alendawang.manhua.model.AudioPlayerConfig
+import com.alendawang.manhua.model.ComicReadMode
 import com.alendawang.manhua.ui.components.AudioPlayerSettingsDialog
 import com.alendawang.manhua.ui.components.VerticalFastScroller
+import com.alendawang.manhua.ui.components.VerticalFastScrollerBase
+import com.alendawang.manhua.ui.reader.ComicReadView
+import com.alendawang.manhua.ui.reader.PageDirection
 import com.alendawang.manhua.utils.loadAudioPlayerConfig
+import com.alendawang.manhua.utils.loadComicReadMode
 import com.alendawang.manhua.utils.saveAudioPlayerConfig
+import com.alendawang.manhua.utils.saveComicReadMode
 import com.alendawang.manhua.utils.formatTime
 import com.alendawang.manhua.model.AppLanguage
 import com.alendawang.manhua.utils.AppStrings
@@ -84,12 +94,68 @@ fun ReaderScreen(
     val density = LocalDensity.current
     val screenWidth = with(density) { LocalConfiguration.current.screenWidthDp.dp.toPx() }
     
+    // 漫画阅读模式
+    var comicReadMode by remember { mutableStateOf(loadComicReadMode(context)) }
+    val isPageFlipMode = comicReadMode != ComicReadMode.SCROLL
+
+    // 翻页模式状态
+    var currentImageIndex by remember { mutableIntStateOf(initialIndex.coerceIn(0, (images.size - 1).coerceAtLeast(0))) }
+    val imageLoader = remember { ImageLoader.Builder(context).build() }
+
+    // ComicReadView 引用，用于 LaunchedEffect 直接设置 Bitmap
+    val comicReadViewRef = remember { mutableStateOf<ComicReadView?>(null) }
+
+    // 加载 Bitmap 的辅助函数
+    suspend fun loadBitmapForIndex(index: Int): Bitmap? {
+        if (index !in images.indices) return null
+        return withContext(Dispatchers.IO) {
+            try {
+                val request = ImageRequest.Builder(context)
+                    .data(images[index])
+                    .allowHardware(false)
+                    .build()
+                val result = imageLoader.execute(request)
+                if (result is SuccessResult) {
+                    (result.drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap
+                } else null
+            } catch (e: Exception) {
+                null
+            }
+        }
+    }
+
+    // 当翻页模式激活时，加载三页 Bitmap 后一次性设置到 View（避免中间状态闪烁）
+    LaunchedEffect(isPageFlipMode, currentImageIndex, images.size) {
+        if (isPageFlipMode && images.isNotEmpty()) {
+            val newCur = loadBitmapForIndex(currentImageIndex)
+            val newPrev = loadBitmapForIndex(currentImageIndex - 1)
+            val newNext = loadBitmapForIndex(currentImageIndex + 1)
+            comicReadViewRef.value?.setBitmaps(newPrev, newCur, newNext)
+
+            // 预加载更大范围到 Coil 缓存（前2后5），加速后续页面加载
+            val preloadRange = (currentImageIndex - 2).coerceAtLeast(0)..(currentImageIndex + 5).coerceAtMost(images.size - 1)
+            preloadRange.forEach { index ->
+                // 跳过已直接加载的三页
+                if (index !in (currentImageIndex - 1)..(currentImageIndex + 1)) {
+                    images.getOrNull(index)?.let { uri ->
+                        val request = ImageRequest.Builder(context)
+                            .data(uri)
+                            .memoryCachePolicy(CachePolicy.ENABLED)
+                            .diskCachePolicy(CachePolicy.ENABLED)
+                            .build()
+                        imageLoader.enqueue(request)
+                    }
+                }
+            }
+        }
+    }
+
     // 时间状态
     var currentTime by remember { mutableStateOf("") }
     LaunchedEffect(Unit) {
         while (true) {
             currentTime = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
-            kotlinx.coroutines.delay(30000) // 每30秒更新一次
+            kotlinx.coroutines.delay(30000)
         }
     }
     
@@ -99,16 +165,24 @@ fun ReaderScreen(
         batteryManager?.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: 100
     }
 
-    val pageIndicatorText by remember(images.size) {
+    val pageIndicatorText by remember(images.size, isPageFlipMode) {
         derivedStateOf {
-            "${lazyListState.firstVisibleItemIndex + 1} / ${images.size}"
+            if (isPageFlipMode) {
+                "${currentImageIndex + 1} / ${images.size}"
+            } else {
+                "${lazyListState.firstVisibleItemIndex + 1} / ${images.size}"
+            }
         }
     }
     
     // 检测是否到达最后一页
     val isAtLastPage by remember {
         derivedStateOf {
-            images.isNotEmpty() && lazyListState.firstVisibleItemIndex >= images.size - 1
+            if (isPageFlipMode) {
+                images.isNotEmpty() && currentImageIndex >= images.size - 1
+            } else {
+                images.isNotEmpty() && lazyListState.firstVisibleItemIndex >= images.size - 1
+            }
         }
     }
     
@@ -132,20 +206,21 @@ fun ReaderScreen(
         }
     }
 
-    // 预加载相邻图片
-    val imageLoader = remember { ImageLoader.Builder(context).build() }
-    LaunchedEffect(Unit) {
-        val visibleStart = lazyListState.firstVisibleItemIndex
-        val preloadRange = (visibleStart - 2).coerceAtLeast(0)..(visibleStart + 5).coerceAtMost(images.size - 1)
-        preloadRange.forEach { index ->
-            images.getOrNull(index)?.let { uri ->
-                val request = ImageRequest.Builder(context)
-                    .data(uri)
-                    .size(screenWidth.toInt())
-                    .memoryCachePolicy(CachePolicy.ENABLED)
-                    .diskCachePolicy(CachePolicy.ENABLED)
-                    .build()
-                imageLoader.enqueue(request)
+    // 滚动模式预加载
+    LaunchedEffect(isPageFlipMode) {
+        if (!isPageFlipMode) {
+            val visibleStart = lazyListState.firstVisibleItemIndex
+            val preloadRange = (visibleStart - 2).coerceAtLeast(0)..(visibleStart + 5).coerceAtMost(images.size - 1)
+            preloadRange.forEach { index ->
+                images.getOrNull(index)?.let { uri ->
+                    val request = ImageRequest.Builder(context)
+                        .data(uri)
+                        .size(screenWidth.toInt())
+                        .memoryCachePolicy(CachePolicy.ENABLED)
+                        .diskCachePolicy(CachePolicy.ENABLED)
+                        .build()
+                    imageLoader.enqueue(request)
+                }
             }
         }
     }
@@ -153,7 +228,7 @@ fun ReaderScreen(
     val screenWidthDp = LocalConfiguration.current.screenWidthDp.dp
     val minImageHeight = screenWidthDp
 
-    // 缩放状态
+    // 缩放状态（仅滚动模式使用）
     var scale by remember { mutableStateOf(1f) }
     var offset by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
     
@@ -162,165 +237,191 @@ fun ReaderScreen(
             .fillMaxSize()
             .padding(paddingValues)
             .background(Color(0xFF121212))
-            // 缩放手势检测（支持先单指触碰后第二指加入）
-            .pointerInput(Unit) {
-                forEachGesture {
-                    awaitPointerEventScope {
-                        // 等待第一个手指按下
-                        awaitPointerEvent()
-                        
-                        // 记录上一帧双指距离和中心点
-                        var prevDist = 0f
-                        var prevCenter = androidx.compose.ui.geometry.Offset.Zero
-                        var wasMultiTouch = false
-                        
-                        do {
-                            val event = awaitPointerEvent()
-                            val pressed = event.changes.filter { it.pressed }
-                            
-                            if (pressed.size >= 2) {
-                                // 双指或多指：计算缩放和平移
-                                val p1 = pressed[0].position
-                                val p2 = pressed[1].position
-                                val dx = p1.x - p2.x
-                                val dy = p1.y - p2.y
-                                val dist = sqrt(dx * dx + dy * dy)
-                                val center = androidx.compose.ui.geometry.Offset(
-                                    (p1.x + p2.x) / 2f,
-                                    (p1.y + p2.y) / 2f
-                                )
-                                
-                                if (wasMultiTouch && prevDist > 0f) {
-                                    // 计算缩放因子
-                                    val zoom = dist / prevDist
-                                    scale = (scale * zoom).coerceIn(1f, 2.5f)
-                                    
-                                    // 计算平移
-                                    val pan = center - prevCenter
-                                    
-                                    if (scale == 1f) {
-                                        offset = androidx.compose.ui.geometry.Offset.Zero
-                                    } else {
-                                        val newX = offset.x + pan.x
-                                        val maxPanX = (screenWidth * scale - screenWidth) / 2
-                                        offset = androidx.compose.ui.geometry.Offset(
-                                            newX.coerceIn(-maxPanX, maxPanX),
-                                            0f
+            // 缩放手势检测（仅滚动模式，翻页模式由 ComicReadView 内部处理）
+            .then(
+                if (!isPageFlipMode) {
+                    Modifier.pointerInput(Unit) {
+                        forEachGesture {
+                            awaitPointerEventScope {
+                                awaitPointerEvent()
+                                var prevDist = 0f
+                                var prevCenter = androidx.compose.ui.geometry.Offset.Zero
+                                var wasMultiTouch = false
+                                do {
+                                    val event = awaitPointerEvent()
+                                    val pressed = event.changes.filter { it.pressed }
+                                    if (pressed.size >= 2) {
+                                        val p1 = pressed[0].position
+                                        val p2 = pressed[1].position
+                                        val dx = p1.x - p2.x
+                                        val dy = p1.y - p2.y
+                                        val dist = sqrt(dx * dx + dy * dy)
+                                        val center = androidx.compose.ui.geometry.Offset(
+                                            (p1.x + p2.x) / 2f,
+                                            (p1.y + p2.y) / 2f
                                         )
-                                        
-                                        // 手动分发垂直滚动事件给 LazyListState
-                                        if (pan.y != 0f) {
-                                            scope.launch {
-                                                lazyListState.scrollBy(-pan.y)
+                                        if (wasMultiTouch && prevDist > 0f) {
+                                            val zoom = dist / prevDist
+                                            scale = (scale * zoom).coerceIn(1f, 2.5f)
+                                            val pan = center - prevCenter
+                                            if (scale == 1f) {
+                                                offset = androidx.compose.ui.geometry.Offset.Zero
+                                            } else {
+                                                val newX = offset.x + pan.x
+                                                val maxPanX = (screenWidth * scale - screenWidth) / 2
+                                                offset = androidx.compose.ui.geometry.Offset(
+                                                    newX.coerceIn(-maxPanX, maxPanX),
+                                                    0f
+                                                )
+                                                if (pan.y != 0f) {
+                                                    scope.launch {
+                                                        lazyListState.scrollBy(-pan.y)
+                                                    }
+                                                }
                                             }
                                         }
+                                        event.changes.forEach {
+                                            if (it.positionChanged()) it.consume()
+                                        }
+                                        prevDist = dist
+                                        prevCenter = center
+                                        wasMultiTouch = true
+                                    } else {
+                                        prevDist = 0f
+                                        wasMultiTouch = false
                                     }
-                                }
-                                
-                                // 消费所有触点的变化，阻止其他手势处理
-                                event.changes.forEach {
-                                    if (it.positionChanged()) it.consume()
-                                }
-                                
-                                prevDist = dist
-                                prevCenter = center
-                                wasMultiTouch = true
-                            } else {
-                                // 回到单指：重置多指状态
-                                prevDist = 0f
-                                wasMultiTouch = false
+                                } while (event.changes.any { it.pressed })
                             }
-                        } while (event.changes.any { it.pressed })
-                    }
-                }
-            }
-    ) {
-        LazyColumn(
-            state = lazyListState,
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer(
-                    scaleX = scale,
-                    scaleY = scale,
-                    translationX = offset.x,
-                    translationY = 0f 
-                ),
-            verticalArrangement = Arrangement.spacedBy(0.dp)
-        ) {
-            items(images, key = { it.toString() }) { uri ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() }, 
-                            indication = null
-                        ) { onToggleBars() }
-                ) {
-                    val model = ImageRequest.Builder(context)
-                        .data(uri)
-                        .size(screenWidth.toInt()) // 限制请求宽度，高度自适应
-                        .memoryCachePolicy(CachePolicy.ENABLED)
-                        .diskCachePolicy(CachePolicy.ENABLED)
-                        .crossfade(false)
-                        .build()
-
-                    coil.compose.SubcomposeAsyncImage(
-                        model = model,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxWidth(),
-                        contentScale = ContentScale.FillWidth,
-                        loading = {
-                            // 加载时显示占位高度，防止跳动
-                            Box(modifier = Modifier.fillMaxWidth().height(minImageHeight).background(Color(0xFF1E1E1E)))
-                        },
-                        success = { state ->
-                            // 加载成功后直接显示图片，不强制最小高度，解决横图留白问题
-                            Image(
-                                painter = state.painter,
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxWidth(),
-                                contentScale = ContentScale.FillWidth
-                            )
                         }
-                    )
-                }
-            }
-            
-            // 章节结尾提示
-            if (hasNextChapter) {
-                item {
+                    }
+                } else Modifier
+            )
+    ) {
+         if (isPageFlipMode) {
+            // ===== 翻页模式 =====
+            AndroidView(
+                factory = { ctx ->
+                    ComicReadView(ctx).apply {
+                        comicReadViewRef.value = this
+                        setReadMode(comicReadMode)
+                        onPageChangeListener = object : ComicReadView.OnPageChangeListener {
+                            override fun onPageChanged(direction: PageDirection) {
+                                when (direction) {
+                                    PageDirection.NEXT -> {
+                                        if (currentImageIndex < images.size - 1) {
+                                            currentImageIndex++
+                                        } else if (hasNextChapter) {
+                                            onNextChapter?.invoke()
+                                        }
+                                    }
+                                    PageDirection.PREV -> {
+                                        if (currentImageIndex > 0) {
+                                            currentImageIndex--
+                                        } else if (hasPrevChapter) {
+                                            onPrevChapter?.invoke()
+                                        }
+                                    }
+                                    else -> Unit
+                                }
+                            }
+                            override fun hasNextPage(): Boolean = currentImageIndex < images.size - 1 || hasNextChapter
+                            override fun hasPrevPage(): Boolean = currentImageIndex > 0 || hasPrevChapter
+                        }
+                        onTapCenterListener = { onToggleBars() }
+                    }
+                },
+                update = { view ->
+                    view.setReadMode(comicReadMode)
+                },
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            // ===== 滚动模式（原始 LazyColumn）=====
+            LazyColumn(
+                state = lazyListState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer(
+                        scaleX = scale,
+                        scaleY = scale,
+                        translationX = offset.x,
+                        translationY = 0f 
+                    ),
+                verticalArrangement = Arrangement.spacedBy(0.dp)
+            ) {
+                items(images, key = { it.toString() }) { uri ->
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(200.dp)
-                            .clickable {
-                                if (canTriggerNextChapter) {
-                                    onNextChapter?.invoke()
-                                }
-                            },
-                        contentAlignment = Alignment.Center
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() }, 
+                                indication = null
+                            ) { onToggleBars() }
                     ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                if (appLanguage == AppLanguage.CHINESE) "— 本章结束 —" else "— End of Chapter —",
-                                color = Color.White.copy(alpha = 0.7f),
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(Modifier.height(8.dp))
-                            Text(
-                                if (appLanguage == AppLanguage.CHINESE) "点击或继续滑动阅读下一章" else "Tap or swipe for next chapter",
-                                color = Color.White.copy(alpha = 0.5f),
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                            Spacer(Modifier.height(16.dp))
-                            Button(
-                                onClick = { onNextChapter?.invoke() },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.primary
+                        val model = ImageRequest.Builder(context)
+                            .data(uri)
+                            .size(screenWidth.toInt())
+                            .memoryCachePolicy(CachePolicy.ENABLED)
+                            .diskCachePolicy(CachePolicy.ENABLED)
+                            .crossfade(false)
+                            .build()
+
+                        coil.compose.SubcomposeAsyncImage(
+                            model = model,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxWidth(),
+                            contentScale = ContentScale.FillWidth,
+                            loading = {
+                                Box(modifier = Modifier.fillMaxWidth().height(minImageHeight).background(Color(0xFF1E1E1E)))
+                            },
+                            success = { state ->
+                                Image(
+                                    painter = state.painter,
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    contentScale = ContentScale.FillWidth
                                 )
-                            ) {
-                                Text(if (appLanguage == AppLanguage.CHINESE) "下一章" else "Next Chapter")
+                            }
+                        )
+                    }
+                }
+                
+                // 章节结尾提示
+                if (hasNextChapter) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp)
+                                .clickable {
+                                    if (canTriggerNextChapter) {
+                                        onNextChapter?.invoke()
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    if (appLanguage == AppLanguage.CHINESE) "— 本章结束 —" else "— End of Chapter —",
+                                    color = Color.White.copy(alpha = 0.7f),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                    if (appLanguage == AppLanguage.CHINESE) "点击或继续滑动阅读下一章" else "Tap or swipe for next chapter",
+                                    color = Color.White.copy(alpha = 0.5f),
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                                Spacer(Modifier.height(16.dp))
+                                Button(
+                                    onClick = { onNextChapter?.invoke() },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary
+                                    )
+                                ) {
+                                    Text(if (appLanguage == AppLanguage.CHINESE) "下一章" else "Next Chapter")
+                                }
                             }
                         }
                     }
@@ -460,28 +561,92 @@ fun ReaderScreen(
             }
         }
 
-        // 快速滚动条
-        if (images.isNotEmpty() && scale == 1f) {
-            VerticalFastScroller(
-                listState = lazyListState,
-                totalItems = images.size,
-                isVisible = isBarsVisible,
-                modifier = Modifier.align(Alignment.CenterEnd)
-            )
+        // 阅读模式切换按钮
+        AnimatedVisibility(
+            visible = isBarsVisible,
+            enter = fadeIn() + scaleIn(),
+            exit = fadeOut() + scaleOut(),
+            modifier = Modifier.align(Alignment.BottomStart).padding(bottom = 80.dp, start = 24.dp)
+        ) {
+            FloatingActionButton(
+                onClick = {
+                    val newMode = when (comicReadMode) {
+                        ComicReadMode.SCROLL -> ComicReadMode.SLIDE
+                        ComicReadMode.SLIDE -> ComicReadMode.SIMULATION
+                        ComicReadMode.SIMULATION -> ComicReadMode.SCROLL
+                    }
+                    comicReadMode = newMode
+                    saveComicReadMode(context, newMode)
+                    // 切换到翻页模式时同步当前滚动位置
+                    if (newMode != ComicReadMode.SCROLL) {
+                        currentImageIndex = lazyListState.firstVisibleItemIndex.coerceIn(0, (images.size - 1).coerceAtLeast(0))
+                    }
+                },
+                containerColor = Color.Black.copy(alpha = 0.7f),
+                contentColor = Color.White,
+                modifier = Modifier.size(48.dp)
+            ) {
+                Icon(
+                    imageVector = when (comicReadMode) {
+                        ComicReadMode.SCROLL -> Icons.Rounded.SwipeVertical
+                        ComicReadMode.SLIDE -> Icons.Rounded.SwipeLeft
+                        ComicReadMode.SIMULATION -> Icons.Rounded.AutoStories
+                    },
+                    contentDescription = comicReadMode.label,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
         }
 
-        // 返回顶部按钮
+        // 快速滚动条
+        if (images.isNotEmpty() && scale == 1f) {
+            if (isPageFlipMode) {
+                // 翻页模式使用基础版 FastScroller，只关联 currentImageIndex
+                VerticalFastScrollerBase(
+                    currentIndex = currentImageIndex,
+                    totalItems = images.size,
+                    isVisible = isBarsVisible,
+                    modifier = Modifier.align(Alignment.CenterEnd),
+                    onScrollTo = { targetIndex ->
+                        currentImageIndex = targetIndex
+                    }
+                )
+            } else {
+                // 滚动模式依然使用原有 FastScroller（内部处理 LazyListState 滚动）
+                VerticalFastScroller(
+                    listState = lazyListState,
+                    totalItems = images.size,
+                    isVisible = isBarsVisible,
+                    modifier = Modifier.align(Alignment.CenterEnd)
+                )
+            }
+        }
+
+        // 返回顶部或首页按钮
+        val showBackToTop = isBarsVisible && if (isPageFlipMode) currentImageIndex > 3 else lazyListState.firstVisibleItemIndex > 3
         AnimatedVisibility(
-            visible = isBarsVisible && lazyListState.firstVisibleItemIndex > 3, 
+            visible = showBackToTop, 
             modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = 80.dp, end = 24.dp), 
             enter = fadeIn() + scaleIn(), 
             exit = fadeOut() + scaleOut()
         ) {
             FloatingActionButton(
-                onClick = { scope.launch { lazyListState.scrollToItem(0) } },
+                onClick = { 
+                    if (isPageFlipMode) {
+                        currentImageIndex = 0
+                    } else {
+                        scope.launch { lazyListState.scrollToItem(0) } 
+                    }
+                },
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-            ) { Icon(Icons.Rounded.ArrowUpward, null) }
+            ) { 
+                Icon(
+                    imageVector = if (isPageFlipMode) Icons.Rounded.ArrowBack else Icons.Rounded.ArrowUpward,
+                    contentDescription = if (appLanguage == AppLanguage.CHINESE) "返回首页/顶部" else "Back to top/first page",
+                    modifier = Modifier.size(24.dp)
+                ) 
+            }
         }
     }
 }

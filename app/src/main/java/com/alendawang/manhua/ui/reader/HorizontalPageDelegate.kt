@@ -8,13 +8,13 @@ import android.view.MotionEvent
  * 水平翻页基类
  * 被 SlidePageDelegate 和 SimulationPageDelegate 继承
  */
-abstract class HorizontalPageDelegate(readView: ReadView) : PageDelegate(readView) {
+abstract class HorizontalPageDelegate(pageView: PageView) : PageDelegate(pageView) {
 
     protected var curBitmap: Bitmap? = null
     protected var prevBitmap: Bitmap? = null
     protected var nextBitmap: Bitmap? = null
 
-    private val slopSquare: Int get() = readView.pageSlopSquare
+    private val slopSquare: Int get() = pageView.pageSlopSquare
 
     override fun setDirection(direction: PageDirection) {
         super.setDirection(direction)
@@ -24,12 +24,12 @@ abstract class HorizontalPageDelegate(readView: ReadView) : PageDelegate(readVie
     open fun setBitmap() {
         when (mDirection) {
             PageDirection.PREV -> {
-                prevBitmap = readView.getPrevBitmap()
-                curBitmap = readView.getCurBitmap()
+                prevBitmap = pageView.getPrevBitmap()
+                curBitmap = pageView.getCurBitmap()
             }
             PageDirection.NEXT -> {
-                nextBitmap = readView.getNextBitmap()
-                curBitmap = readView.getCurBitmap()
+                nextBitmap = pageView.getNextBitmap()
+                curBitmap = pageView.getCurBitmap()
             }
             else -> Unit
         }
@@ -44,7 +44,7 @@ abstract class HorizontalPageDelegate(readView: ReadView) : PageDelegate(readVie
                 onScrollEvent(event)
             }
             MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_UP -> {
-                onAnimStart(readView.defaultAnimationSpeed)
+                onAnimStart(pageView.defaultAnimationSpeed)
             }
         }
     }
@@ -84,13 +84,13 @@ abstract class HorizontalPageDelegate(readView: ReadView) : PageDelegate(readVie
                     }
                     setDirection(PageDirection.NEXT)
                 }
-                readView.setStartPoint(event.x, event.y, false)
+                pageView.setStartPoint(event.x, event.y, false)
             }
         }
         if (isMoved) {
             isCancel = if (mDirection == PageDirection.NEXT) sumX > lastX else sumX < lastX
             isRunning = true
-            readView.setTouchPoint(sumX, sumY)
+            pageView.setTouchPoint(sumX, sumY)
         }
     }
 
@@ -99,14 +99,14 @@ abstract class HorizontalPageDelegate(readView: ReadView) : PageDelegate(readVie
         isMoved = false
         isRunning = false
         if (!scroller.isFinished) {
-            readView.isAbortAnim = true
+            pageView.isAbortAnim = true
             scroller.abortAnimation()
             if (!isCancel) {
-                readView.fillPage(mDirection)
-                readView.invalidate()
+                pageView.fillPage(mDirection)
+                pageView.invalidate()
             }
         } else {
-            readView.isAbortAnim = false
+            pageView.isAbortAnim = false
         }
     }
 
@@ -115,7 +115,7 @@ abstract class HorizontalPageDelegate(readView: ReadView) : PageDelegate(readVie
         if (!hasNext()) return
         setDirection(PageDirection.NEXT)
         val y = if (startY > viewHeight / 2) viewHeight.toFloat() * 0.9f else 1f
-        readView.setStartPoint(viewWidth.toFloat() * 0.9f, y, false)
+        pageView.setStartPoint(viewWidth.toFloat() * 0.9f, y, false)
         onAnimStart(animationSpeed)
     }
 
@@ -123,7 +123,7 @@ abstract class HorizontalPageDelegate(readView: ReadView) : PageDelegate(readVie
         abortAnim()
         if (!hasPrev()) return
         setDirection(PageDirection.PREV)
-        readView.setStartPoint(0f, viewHeight.toFloat(), false)
+        pageView.setStartPoint(0f, viewHeight.toFloat(), false)
         onAnimStart(animationSpeed)
     }
 
@@ -134,3 +134,4 @@ abstract class HorizontalPageDelegate(readView: ReadView) : PageDelegate(readVie
         nextBitmap = null
     }
 }
+

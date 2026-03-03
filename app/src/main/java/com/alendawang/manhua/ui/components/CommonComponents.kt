@@ -38,16 +38,34 @@ fun VerticalFastScroller(
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
+    val firstVisibleIndex by remember { derivedStateOf { listState.firstVisibleItemIndex } }
+    
+    VerticalFastScrollerBase(
+        currentIndex = firstVisibleIndex,
+        totalItems = totalItems,
+        isVisible = isVisible,
+        modifier = modifier,
+        onScrollTo = { targetIndex ->
+            scope.launch { listState.scrollToItem(targetIndex) }
+        }
+    )
+}
+
+@Composable
+fun VerticalFastScrollerBase(
+    currentIndex: Int,
+    totalItems: Int,
+    isVisible: Boolean,
+    modifier: Modifier = Modifier,
+    onScrollTo: (Int) -> Unit
+) {
     var isDragging by remember { mutableStateOf(false) }
     var dragProgress by remember { mutableFloatStateOf(0f) }
     var barHeight by remember { mutableIntStateOf(0) }
 
-    val firstVisibleIndex by remember { derivedStateOf { listState.firstVisibleItemIndex } }
-
     val progress = if (isDragging) dragProgress else {
-        if (totalItems > 1) firstVisibleIndex.toFloat() / (totalItems - 1) else 0f
+        if (totalItems > 1) currentIndex.toFloat() / (totalItems - 1) else 0f
     }.coerceIn(0f, 1f)
-
 
     AnimatedVisibility(
         visible = isVisible || isDragging,
@@ -67,7 +85,7 @@ fun VerticalFastScroller(
                             // 防止 barHeight 为 0 时除零
                             dragProgress = if (barHeight > 0) (offset.y / barHeight).coerceIn(0f, 1f) else 0f
                             val targetIndex = (dragProgress * (totalItems - 1)).roundToInt().coerceIn(0, totalItems - 1)
-                            scope.launch { listState.scrollToItem(targetIndex) }
+                            onScrollTo(targetIndex)
                         },
                         onDragEnd = { isDragging = false },
                         onDragCancel = { isDragging = false },
@@ -77,7 +95,7 @@ fun VerticalFastScroller(
                             val newProgress = if (barHeight > 0) (newY / barHeight).coerceIn(0f, 1f) else dragProgress
                             dragProgress = newProgress
                             val targetIndex = (newProgress * (totalItems - 1)).roundToInt().coerceIn(0, totalItems - 1)
-                            scope.launch { listState.scrollToItem(targetIndex) }
+                            onScrollTo(targetIndex)
                         }
                     )
                 }

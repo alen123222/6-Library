@@ -6,7 +6,7 @@ import android.graphics.Canvas
  * 左右滑动翻页
  * 通过 Canvas translate 平移当前页和目标页 Bitmap
  */
-class SlidePageDelegate(readView: ReadView) : HorizontalPageDelegate(readView) {
+class SlidePageDelegate(pageView: PageView) : HorizontalPageDelegate(pageView) {
 
     override fun onAnimStart(animationSpeed: Int) {
         val distanceX: Float = when (mDirection) {
@@ -77,7 +77,7 @@ class SlidePageDelegate(readView: ReadView) : HorizontalPageDelegate(readView) {
 
     override fun onAnimStop() {
         if (!isCancel) {
-            readView.fillPage(mDirection)
+            pageView.fillPage(mDirection)
         }
     }
 }

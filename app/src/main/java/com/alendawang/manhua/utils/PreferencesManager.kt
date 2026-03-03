@@ -532,3 +532,16 @@ fun loadDontShowLargeFileTip(context: Context): Boolean {
 fun saveDontShowLargeFileTip(context: Context, value: Boolean) {
     context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit { putBoolean(KEY_DONT_SHOW_LARGE_FILE_TIP, value) }
 }
+
+// --- 漫画阅读模式 ---
+private const val KEY_COMIC_READ_MODE = "comic_read_mode"
+
+fun loadComicReadMode(context: Context): ComicReadMode {
+    val modeName = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        .getString(KEY_COMIC_READ_MODE, ComicReadMode.SCROLL.name)
+    return try { ComicReadMode.valueOf(modeName ?: ComicReadMode.SCROLL.name) } catch (_: Exception) { ComicReadMode.SCROLL }
+}
+
+fun saveComicReadMode(context: Context, mode: ComicReadMode) {
+    context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit { putString(KEY_COMIC_READ_MODE, mode.name) }
+}

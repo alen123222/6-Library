@@ -25,7 +25,7 @@ import kotlin.math.sin
  * 使用贝塞尔曲线模拟真实书页翻转
  */
 @Suppress("DEPRECATION")
-class SimulationPageDelegate(readView: ReadView) : HorizontalPageDelegate(readView) {
+class SimulationPageDelegate(pageView: PageView) : HorizontalPageDelegate(pageView) {
 
     private var mTouchX = 0.1f
     private var mTouchY = 0.1f
@@ -81,6 +81,10 @@ class SimulationPageDelegate(readView: ReadView) : HorizontalPageDelegate(readVi
     private var simCurBitmap: Bitmap? = null
     private var simPrevBitmap: Bitmap? = null
     private var simNextBitmap: Bitmap? = null
+
+    // 背面低分辨率缓存（1/2 分辨率）
+    private var backBitmapCache: Bitmap? = null
+    private var backBitmapSource: Bitmap? = null // 记录源 Bitmap 用于判断是否需要重建
     private var simCanvas = Canvas()
 
     init {
@@ -110,12 +114,12 @@ class SimulationPageDelegate(readView: ReadView) : HorizontalPageDelegate(readVi
     override fun setBitmap() {
         when (mDirection) {
             PageDirection.PREV -> {
-                simPrevBitmap = readView.getPrevBitmap()
-                simCurBitmap = readView.getCurBitmap()
+                simPrevBitmap = pageView.getPrevBitmap()
+                simCurBitmap = pageView.getCurBitmap()
             }
             PageDirection.NEXT -> {
-                simNextBitmap = readView.getNextBitmap()
-                simCurBitmap = readView.getCurBitmap()
+                simNextBitmap = pageView.getNextBitmap()
+                simCurBitmap = pageView.getCurBitmap()
             }
             else -> Unit
         }
@@ -138,12 +142,12 @@ class SimulationPageDelegate(readView: ReadView) : HorizontalPageDelegate(readVi
                 if ((startY > viewHeight / 3 && startY < viewHeight * 2 / 3)
                     || mDirection == PageDirection.PREV
                 ) {
-                    readView.touchY = viewHeight.toFloat()
+                    pageView.touchY = viewHeight.toFloat()
                 }
                 if (startY > viewHeight / 3 && startY < viewHeight / 2
                     && mDirection == PageDirection.NEXT
                 ) {
-                    readView.touchY = 1f
+                    pageView.touchY = 1f
                 }
             }
         }
@@ -201,7 +205,7 @@ class SimulationPageDelegate(readView: ReadView) : HorizontalPageDelegate(readVi
 
     override fun onAnimStop() {
         if (!isCancel) {
-            readView.fillPage(mDirection)
+            pageView.fillPage(mDirection)
         }
     }
 
@@ -228,6 +232,11 @@ class SimulationPageDelegate(readView: ReadView) : HorizontalPageDelegate(readVi
 
     private fun drawCurrentBackArea(canvas: Canvas, bitmap: Bitmap?) {
         bitmap ?: return
+
+        // 使用 1/2 分辨率的背面 Bitmap 减少性能开销
+        val backBmp = getOrCreateBackBitmap(bitmap)
+        val backScale = bitmap.width.toFloat() / backBmp.width.toFloat()
+
         val i = ((mBezierStart1.x + mBezierControl1.x) / 2).toInt()
         val f1 = abs(i - mBezierControl1.x)
         val i1 = ((mBezierStart2.y + mBezierControl2.y) / 2).toInt()
@@ -274,7 +283,9 @@ class SimulationPageDelegate(readView: ReadView) : HorizontalPageDelegate(readVi
         mMatrix.setValues(mMatrixArray)
         mMatrix.preTranslate(-mBezierControl1.x, -mBezierControl1.y)
         mMatrix.postTranslate(mBezierControl1.x, mBezierControl1.y)
-        canvas.drawBitmap(bitmap, mMatrix, mPaint)
+        // 背面使用低分辨率 Bitmap，需要额外缩放以匹配原始尺寸
+        mMatrix.preScale(backScale, backScale)
+        canvas.drawBitmap(backBmp, mMatrix, mPaint)
         mPaint.colorFilter = null
         canvas.rotate(mDegrees, mBezierStart1.x, mBezierStart1.y)
         mFolderShadowDrawable.setBounds(
@@ -283,6 +294,21 @@ class SimulationPageDelegate(readView: ReadView) : HorizontalPageDelegate(readVi
         )
         mFolderShadowDrawable.draw(canvas)
         canvas.restore()
+    }
+
+    /**
+     * 获取或创建背面低分辨率 Bitmap（1/2 尺寸）
+     */
+    private fun getOrCreateBackBitmap(source: Bitmap): Bitmap {
+        if (backBitmapSource === source && backBitmapCache != null && !backBitmapCache!!.isRecycled) {
+            return backBitmapCache!!
+        }
+        backBitmapCache?.recycle()
+        val halfW = (source.width / 2).coerceAtLeast(1)
+        val halfH = (source.height / 2).coerceAtLeast(1)
+        backBitmapCache = Bitmap.createScaledBitmap(source, halfW, halfH, true)
+        backBitmapSource = source
+        return backBitmapCache!!
     }
 
     private fun drawCurrentPageShadow(canvas: Canvas) {
