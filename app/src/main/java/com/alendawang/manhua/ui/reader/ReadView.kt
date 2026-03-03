@@ -45,6 +45,7 @@ class ReadView @JvmOverloads constructor(
     private var pressDown = false
     private var isMove = false
     private val slopSquare by lazy { ViewConfiguration.get(context).scaledTouchSlop }
+    var isAbortAnim = false
 
     // 页面数据
     private var prevPageContent: PageContent? = null
@@ -99,8 +100,23 @@ class ReadView @JvmOverloads constructor(
     }
 
     fun setBgColor(color: Int) {
-        bgColor = color
-        bitmapsDirty = true
+        if (bgColor != color) {
+            bgColor = color
+            bitmapsDirty = true
+            invalidate()
+        }
+    }
+
+    private var bgBitmap: Bitmap? = null
+    private var bgOverlayAlpha: Float = 0f
+
+    fun setBgBitmap(bitmap: Bitmap?, overlayAlpha: Float = 0f) {
+        if (bgBitmap != bitmap || bgOverlayAlpha != overlayAlpha) {
+            bgBitmap = bitmap
+            bgOverlayAlpha = overlayAlpha
+            bitmapsDirty = true
+            invalidate()
+        }
     }
 
     private fun updatePageDelegate() {
@@ -121,16 +137,16 @@ class ReadView @JvmOverloads constructor(
         // 不要 recycle 旧的 Bitmap！PageDelegate 可能仍持有引用
         // 旧 Bitmap 会在失去所有引用后被 GC 自然回收
 
-        // 强制使用 TRANSPARENT 渲染 Bitmap 背景，以便底层 Compose Background (纹理/自定义图片) 能透出来
-        val transparent = android.graphics.Color.TRANSPARENT
+        // 如果不使用 bgBitmap，则使用纯色 bgColor 填充背景
+        // 如果使用了 bgBitmap，内部会自动画上纹理和遮罩
         cachedPrevBitmap = PageRenderer.renderPage(
-            prevPageContent, config, width, height, density, scaledDensity, transparent, ""
+            prevPageContent, config, width, height, density, scaledDensity, bgColor, bgBitmap, bgOverlayAlpha, ""
         )
         cachedCurBitmap = PageRenderer.renderPage(
-            curPageContent, config, width, height, density, scaledDensity, transparent, pageInfo
+            curPageContent, config, width, height, density, scaledDensity, bgColor, bgBitmap, bgOverlayAlpha, pageInfo
         )
         cachedNextBitmap = PageRenderer.renderPage(
-            nextPageContent, config, width, height, density, scaledDensity, transparent, ""
+            nextPageContent, config, width, height, density, scaledDensity, bgColor, bgBitmap, bgOverlayAlpha, ""
         )
         bitmapsDirty = false
     }
@@ -160,6 +176,32 @@ class ReadView @JvmOverloads constructor(
             it.isStarted = false
             it.isMoved = false
         }
+        
+        // 内部平移，防止跨章时 Compose 异步加载导致的视觉闪烁（填补旧数据的时间差）
+        when (direction) {
+            PageDirection.NEXT -> {
+                prevPageContent = curPageContent
+                curPageContent = nextPageContent
+                // nextPageContent could be null until later
+                nextPageContent = null
+                
+                cachedPrevBitmap = cachedCurBitmap
+                cachedCurBitmap = cachedNextBitmap
+                cachedNextBitmap = null
+            }
+            PageDirection.PREV -> {
+                nextPageContent = curPageContent
+                curPageContent = prevPageContent
+                prevPageContent = null
+                
+                cachedNextBitmap = cachedCurBitmap
+                cachedCurBitmap = cachedPrevBitmap
+                cachedPrevBitmap = null
+            }
+            PageDirection.NONE -> {}
+        }
+        invalidate()
+        
         onPageChangeListener?.onPageChanged(direction)
     }
 
@@ -234,6 +276,11 @@ class ReadView @JvmOverloads constructor(
                 if (!pressDown) return true
                 pressDown = false
                 if (pageDelegate?.isMoved != true && !isMove) {
+                    // 中断动画的那次点击不触发新翻页（与 Legado isAbortAnim 一致）
+                    if (isAbortAnim) {
+                        isAbortAnim = false
+                        return true
+                    }
                     // 单击处理
                     val screenWidth = width
                     when {

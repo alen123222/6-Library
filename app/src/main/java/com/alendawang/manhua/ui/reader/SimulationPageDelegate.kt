@@ -158,10 +158,11 @@ class SimulationPageDelegate(readView: ReadView) : HorizontalPageDelegate(readVi
                 } else {
                     calcCornerXY(viewWidth - startX, viewHeight.toFloat())
                 }
-            PageDirection.NEXT ->
-                if (viewWidth / 2 > startX) {
-                    calcCornerXY(viewWidth - startX, startY)
-                }
+            PageDirection.NEXT -> {
+                // 始终重新计算角点，确保从右侧翻页
+                val cornerX = if (viewWidth / 2 > startX) viewWidth - startX else startX
+                calcCornerXY(cornerX, startY)
+            }
             else -> Unit
         }
     }
@@ -273,7 +274,6 @@ class SimulationPageDelegate(readView: ReadView) : HorizontalPageDelegate(readVi
         mMatrix.setValues(mMatrixArray)
         mMatrix.preTranslate(-mBezierControl1.x, -mBezierControl1.y)
         mMatrix.postTranslate(mBezierControl1.x, mBezierControl1.y)
-        canvas.drawColor(readView.bgColor)
         canvas.drawBitmap(bitmap, mMatrix, mPaint)
         mPaint.colorFilter = null
         canvas.rotate(mDegrees, mBezierStart1.x, mBezierStart1.y)

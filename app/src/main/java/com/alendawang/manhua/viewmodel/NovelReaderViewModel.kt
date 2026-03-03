@@ -20,23 +20,45 @@ class NovelReaderViewModel(
     var config by mutableStateOf(loadReaderConfig(context))
     var fullText by mutableStateOf("")
     var pages by mutableStateOf<List<PageContent>>(emptyList())
+    var nextChapterFirstPage by mutableStateOf<PageContent?>(null)
+    var prevChapterLastPage by mutableStateOf<PageContent?>(null)
     var currentPageIndex by mutableIntStateOf(0)
     var chapterTitle by mutableStateOf("")
     var showMenu by mutableStateOf(false)
     var showSettings by mutableStateOf(false)
+    var isJumpingToPreviousChapter by mutableStateOf(false)
 
     private val paint = android.graphics.Paint()
     private val textBounds = android.graphics.Rect()
+    
+    // 存储与屏幕画布绑定的真实宽高（规避系统状态栏、刘海遮挡导致的屏幕像素错觉）
+    var viewWidth: Int = 0
+    var viewHeight: Int = 0
 
     // 初始化章节内容
-    fun loadChapter(text: String, title: String) {
+    fun loadChapter(text: String, title: String, startFromLastPage: Boolean = false) {
         fullText = text
         chapterTitle = title
-        calculatePages()
+        pages = calculatePagesFor(fullText)
+        currentPageIndex = if (startFromLastPage) maxOf(0, pages.size - 1) else 0
     }
 
-    // 计算分页（核心算法）
+    // 预加载相邻章节的首尾页（用于无缝翻页）
+    fun prefetchAdjacentChapters(prevText: String?, nextText: String?) {
+        prevChapterLastPage = prevText?.let { calculatePagesFor(it).lastOrNull() }
+        nextChapterFirstPage = nextText?.let { calculatePagesFor(it).firstOrNull() }
+    }
+
+    // 计算分页（更新当前状态）
     fun calculatePages() {
+        pages = calculatePagesFor(fullText)
+        if (currentPageIndex >= pages.size) {
+            currentPageIndex = maxOf(0, pages.size - 1)
+        }
+    }
+
+    // 纯计算：为给定文本计算分页列表
+    fun calculatePagesFor(text: String): List<PageContent> {
         val density = context.resources.displayMetrics.density
         val scaledDensity = context.resources.displayMetrics.scaledDensity
 
@@ -49,135 +71,70 @@ class NovelReaderViewModel(
             FontType.System -> android.graphics.Typeface.DEFAULT
         }
 
-        val screenWidth = context.resources.displayMetrics.widthPixels
-        val screenHeight = context.resources.displayMetrics.heightPixels
-        val availableWidth = screenWidth - (config.horizontalPadding * 2 * density).toInt()
+        val width = if (viewWidth > 0) viewWidth else context.resources.displayMetrics.widthPixels
+        val height = if (viewHeight > 0) viewHeight else context.resources.displayMetrics.heightPixels
+        val availableWidth = (width - config.horizontalPadding * 2 * density).toInt()
         val lineHeight = (config.fontSize * config.lineHeightRatio * scaledDensity).toInt()
         val paragraphSpacing = (config.paragraphSpacing * scaledDensity).toInt()
-        val maxPageHeight = screenHeight - (64 * density).toInt() // 减去底部和顶部栏空间
+        val maxPageHeight = height - (64 * density).toInt() // 减去底部和顶部栏空间（32dp * 2）
 
         val resultPages = mutableListOf<PageContent>()
-        val paragraphs = fullText.split("\n")
-        var currentPage = StringBuilder()
-        var currentHeight = 0
-        var startIndex = 0
-
-        for (paragraph in paragraphs) {
-            if (paragraph.isEmpty()) {
-                // 空段落，只添加段落间距
-                if (currentHeight + paragraphSpacing > maxPageHeight) {
-                    // 保存当前页
-                    if (currentPage.isNotEmpty()) {
-                        resultPages.add(PageContent(
-                            startIndex = startIndex,
-                            endIndex = startIndex + currentPage.length,
-                            text = currentPage.toString().trimEnd(),
-                            pageIndex = resultPages.size
-                        ))
-                        startIndex += currentPage.length
-                        currentPage = StringBuilder()
-                    }
-                    currentHeight = 0
-                }
-                currentPage.append("\n")
-                currentHeight += paragraphSpacing
-                continue
-            }
-
-            // 处理段落分行
-            val lines = mutableListOf<String>()
-            var remainingText = paragraph
-
-            while (remainingText.isNotEmpty()) {
-                val breakIndex = paint.breakText(remainingText, true, availableWidth.toFloat(), null)
-                if (breakIndex > 0) {
-                    // 确保不会在字符中间断开（对于多字节字符）
-                    var actualBreakIndex = breakIndex
-                    if (remainingText.length > breakIndex) {
-                        val charAfterBreak = remainingText.codePointAt(breakIndex)
-                        if (Character.isSupplementaryCodePoint(charAfterBreak) || charAfterBreak > 0x7F) {
-                            // 可能是多字节字符，向后查找安全断点
-                            actualBreakIndex = findSafeBreakPoint(remainingText, breakIndex)
-                        }
-                    }
-                    lines.add(remainingText.substring(0, actualBreakIndex))
-                    remainingText = remainingText.substring(actualBreakIndex)
-                } else {
-                    lines.add(remainingText)
-                    break
-                }
-            }
-
-            val linesHeight = lines.size * lineHeight
-            val paragraphTotalHeight = linesHeight + paragraphSpacing
-
-            // 检查当前页是否能容纳这个段落
-            if (currentHeight + paragraphTotalHeight > maxPageHeight) {
-                // 保存当前页
-                if (currentPage.isNotEmpty()) {
-                    resultPages.add(PageContent(
-                        startIndex = startIndex,
-                        endIndex = startIndex + currentPage.length,
-                        text = currentPage.toString().trimEnd(),
-                        pageIndex = resultPages.size
-                    ))
-                    startIndex += currentPage.length
-                    currentPage = StringBuilder()
-                    currentHeight = 0
-                }
-
-                // 如果段落本身太长，需要跨页
-                if (paragraphTotalHeight > maxPageHeight) {
-                    var linesAdded = 0
-                    for (line in lines) {
-                        if (currentHeight + lineHeight > maxPageHeight) {
-                            // 当前页已满
-                            if (currentPage.isNotEmpty()) {
-                                resultPages.add(PageContent(
-                                    startIndex = startIndex,
-                                    endIndex = startIndex + currentPage.length,
-                                    text = currentPage.toString().trimEnd(),
-                                    pageIndex = resultPages.size
-                                ))
-                                startIndex += currentPage.length
-                                currentPage = StringBuilder()
-                                currentHeight = 0
-                            }
-                        }
-                        currentPage.append(line).append("\n")
-                        currentHeight += lineHeight
-                        linesAdded++
-                    }
-                    // 添加段落间距（除非是段落最后一行且已到新页）
-                    if (linesAdded < lines.size || currentHeight + paragraphSpacing <= maxPageHeight) {
-                        currentHeight += paragraphSpacing
-                    }
-                } else {
-                    // 新的一页，直接添加段落
-                    currentPage.append(paragraph).append("\n")
-                    currentHeight = paragraphTotalHeight
-                }
-            } else {
-                // 当前页可以容纳这个段落
-                currentPage.append(paragraph).append("\n")
-                currentHeight += paragraphTotalHeight
-            }
+        if (text.isEmpty()) return resultPages
+        
+        // 全局一次性测量整章文本
+        val textPaint = android.text.TextPaint(paint)
+        val staticLayout = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            android.text.StaticLayout.Builder.obtain(text, 0, text.length, textPaint, availableWidth)
+                .setAlignment(android.text.Layout.Alignment.ALIGN_NORMAL)
+                .setLineSpacing(0f, 1f)
+                .setIncludePad(false)
+                .build()
+        } else {
+            @Suppress("DEPRECATION")
+            android.text.StaticLayout(text, textPaint, availableWidth, android.text.Layout.Alignment.ALIGN_NORMAL, 1f, 0f, false)
         }
 
-        // 添加最后一页
-        if (currentPage.isNotEmpty()) {
+        var currentHeight = 0
+        var pageStartOffset = 0
+
+        for (i in 0 until staticLayout.lineCount) {
+            val lineStart = staticLayout.getLineStart(i)
+            val lineEnd = staticLayout.getLineEnd(i)
+            val lineText = text.substring(lineStart, lineEnd)
+
+            var addedHeight = lineHeight
+            // 原生 StaticLayout 会保留字串里的换行符，以此判断是否为真实段落末尾
+            val isParagraphEnd = lineText.endsWith("\n")
+            if (isParagraphEnd) {
+                addedHeight += paragraphSpacing
+            }
+
+            // 如果本行加上后超过了一页能容纳的最大高度，进行强制分页
+            if (currentHeight + addedHeight > maxPageHeight && currentHeight > 0) {
+                resultPages.add(PageContent(
+                    startIndex = pageStartOffset,
+                    endIndex = lineStart,
+                    text = text.substring(pageStartOffset, lineStart),
+                    pageIndex = resultPages.size
+                ))
+                pageStartOffset = lineStart
+                currentHeight = 0
+            }
+            
+            currentHeight += addedHeight
+        }
+
+        // 收集最后一页内容
+        if (pageStartOffset < text.length) {
             resultPages.add(PageContent(
-                startIndex = startIndex,
-                endIndex = startIndex + currentPage.length,
-                text = currentPage.toString().trimEnd(),
+                startIndex = pageStartOffset,
+                endIndex = text.length,
+                text = text.substring(pageStartOffset, text.length),
                 pageIndex = resultPages.size
             ))
         }
 
-        pages = resultPages
-        if (currentPageIndex >= pages.size) {
-            currentPageIndex = maxOf(0, pages.size - 1)
-        }
+        return resultPages
     }
 
     // 找到安全的断点，避免在多字节字符中间断开

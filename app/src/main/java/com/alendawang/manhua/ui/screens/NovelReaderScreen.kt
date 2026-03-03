@@ -210,11 +210,12 @@ fun NovelReaderScreen(
         isLoading = true
         loadChapterBlock(chapterIndex)
         isLoading = false
-        // 顺序预加载后续章节，避免并发争抢CPU导致快速滑动时卡顿
+        // 顺序预加载前后章节，避免并发争抢CPU导致快速滑动时卡顿
         preloadScope.launch {
-            for (offset in 1..3) {
+            for (offset in -2..3) {
+                if (offset == 0) continue
                 val nextIndex = chapterIndex + offset
-                if (nextIndex <= novel.chapters.lastIndex) {
+                if (nextIndex in novel.chapters.indices) {
                     loadChapterBlock(nextIndex)
                 }
             }
@@ -246,6 +247,16 @@ fun NovelReaderScreen(
 
     // 当前章节索引 - 两种模式共用
     var currentChapterIndex by remember { mutableIntStateOf(chapterIndex) }
+
+    // 当用户从外部（如侧边栏目录）点击跳转时，同步更新内部的 currentChapterIndex
+    LaunchedEffect(chapterIndex) {
+        if (currentChapterIndex != chapterIndex) {
+            currentChapterIndex = chapterIndex
+            initialScrollApplied = false
+            // 目录跳转一定是跳转到首段，由后续提取内容时的 LaunchedEffect 正常加载即可。
+            // 唯一需要注意的是不要随便重置 viewModel.currentPageIndex，交给 loadChapter 自己决定。
+        }
+    }
 
     // 滚动模式：从 listState 推导章节索引（翻页模式下不使用 listState，跳过）
     val pageFlipModeForTracking = viewModel.config.pageFlipMode
@@ -291,19 +302,19 @@ fun NovelReaderScreen(
                 }
                 val chapterContent = extractChapterText(fullText, chapter)
                 currentChapterText = chapterContent
-                viewModel.loadChapter(chapterContent, chapter.name)
+                viewModel.chapterTitle = chapter.name
             }
         } else {
             currentChapterText = null
             viewModel.chapterTitle = ""
         }
 
-        // 滚动跟踪式预加载：当前章节变化时，保持前方3章缓冲
-        // loadChapterBlock内部有去重守卫，已加载的章节会被自动跳过
+    
         preloadScope.launch {
-            for (offset in 1..3) {
+            for (offset in -2..3) {
+                if (offset == 0) continue
                 val nextIndex = currentChapterIndex + offset
-                if (nextIndex <= novel.chapters.lastIndex) {
+                if (nextIndex in novel.chapters.indices) {
                     loadChapterBlock(nextIndex)
                 }
             }
@@ -403,10 +414,7 @@ fun NovelReaderScreen(
             fun requestChapterScroll(targetIndex: Int, targetPosition: Int) {
                 scrollScope.launch {
                     loadChapterBlock(targetIndex)
-                    if (isPageFlipMode) {
-                        // 翻页模式直接跳到第一页
-                        viewModel.jumpToPage(0)
-                    } else {
+                    if (!isPageFlipMode) {
                         if (targetIndex + 1 <= novel.chapters.lastIndex) {
                             preloadScope.launch { loadChapterBlock(targetIndex + 1) }
                         }
@@ -601,58 +609,126 @@ fun NovelReaderScreen(
                         val block = loadedChapters.firstOrNull { it.chapterIndex == currentChapterIndex }
                         if (block != null) {
                             if (block.isEpub && block.epubParts != null) {
-                                block.epubParts.joinToString("\n\n") { it.toString() }
+                                // Html.fromHtml 会将 <p> 转成带 \n\n 的文本串，为避免叠加导致行距过宽，统一将连续的换行压缩为一。
+                                block.epubParts.joinToString("\n") { it.toString() }.replace(Regex("\\n{2,}"), "\n")
                             } else {
-                                block.paragraphs.joinToString("\n\n")
+                                block.paragraphs.joinToString("\n").replace(Regex("\\n{2,}"), "\n")
                             }
                         } else {
                             ""
                         }
                     }
                 }
-                LaunchedEffect(currentChapterContent, viewModel.config, currentChapterIndex) {
-                    if (currentChapterContent.isNotEmpty()) {
-                        val title = novel.chapters.getOrNull(currentChapterIndex)?.name ?: ""
-                        viewModel.loadChapter(currentChapterContent, title)
-                    }
-                }
+                var jumpToLastPageOnLoad by remember { mutableStateOf(false) }
 
-                // Bitmap 需要不透明背景（仿真翻页动画需要完整页面）
-                val bgColorInt = remember(viewModel.config) {
-                    val c = viewModel.config.backgroundColor.color
-                    android.graphics.Color.argb(
-                        (c.alpha * 255).toInt(),
-                        (c.red * 255).toInt(),
-                        (c.green * 255).toInt(),
-                        (c.blue * 255).toInt()
+                // --- 解析背景图片以提供给原生画布 ---
+                val context = LocalContext.current
+                var bgBitmap by remember(viewModel.config.customBackgroundUriString, viewModel.config.backgroundColor) {
+                    mutableStateOf<android.graphics.Bitmap?>(
+                        run {
+                            if (viewModel.config.customBackgroundUriString == null) {
+                                val resId = when (viewModel.config.backgroundColor) {
+                                    com.alendawang.manhua.model.ReaderBackgroundColor.Parchment -> com.alendawang.manhua.R.drawable.reader_bg_1
+                                    com.alendawang.manhua.model.ReaderBackgroundColor.EyeCare -> com.alendawang.manhua.R.drawable.reader_bg_2
+                                    else -> null
+                                }
+                                if (resId != null) android.graphics.BitmapFactory.decodeResource(context.resources, resId) else null
+                            } else null
+                        }
                     )
                 }
-
-                val curPage = viewModel.pages.getOrNull(viewModel.currentPageIndex)
-                val prevPageData = viewModel.pages.getOrNull(viewModel.currentPageIndex - 1)
-                val nextPageData = viewModel.pages.getOrNull(viewModel.currentPageIndex + 1)
-                val pageProgressInfo = viewModel.getProgressText()
+                LaunchedEffect(viewModel.config.customBackgroundUriString) {
+                    val uri = viewModel.config.customBackgroundUriString
+                    if (uri != null) {
+                        try {
+                            val request = coil.request.ImageRequest.Builder(context)
+                                .data(uri)
+                                .build()
+                            val result = coil.ImageLoader(context).execute(request)
+                            if (result is coil.request.SuccessResult) {
+                                bgBitmap = (result.drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap
+                            }
+                        } catch (e: Exception) {
+                            bgBitmap = null
+                        }
+                    }
+                }
+                
+                // 仅对用户自定义图片应用黑色遮罩（系统自带底纹无需 Overlay，以免整体变暗）
+                val activeOverlayAlpha = if (viewModel.config.customBackgroundUriString != null) {
+                    viewModel.config.customBackgroundOverlayAlpha
+                } else 0f
 
                 // 底层 ReaderBackground + 上层 ReadView
-                Box(modifier = Modifier.fillMaxSize()) {
-                ReaderBackground(
-                    config = viewModel.config,
-                    modifier = Modifier.fillMaxSize()
-                )
-                AndroidView(
+                BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                    val viewWidth = constraints.maxWidth
+                    val viewHeight = constraints.maxHeight
+
+                    LaunchedEffect(currentChapterContent, viewModel.config, viewWidth, viewHeight) {
+                        if (currentChapterContent.isNotEmpty() && viewWidth > 0 && viewHeight > 0) {
+                            viewModel.viewWidth = viewWidth
+                            viewModel.viewHeight = viewHeight
+                            
+                            val title = novel.chapters.getOrNull(currentChapterIndex)?.name ?: ""
+                            viewModel.loadChapter(currentChapterContent, title, viewModel.isJumpingToPreviousChapter)
+                            // 当本章通过loadChapter载入并计算完页码后，重置跳页标志，防止影响下一次进入本页面
+                            viewModel.isJumpingToPreviousChapter = false 
+
+                            // Extract adjacent chapters texts
+                            val getChapterText: (Int) -> String? = { index ->
+                                if (index in novel.chapters.indices) {
+                                    val block = loadedChapters.firstOrNull { it.chapterIndex == index }
+                                    if (block != null) {
+                                        if (block.isEpub && block.epubParts != null) block.epubParts.joinToString("\n") { it.toString() }.replace(Regex("\\n{2,}"), "\n")
+                                        else block.paragraphs.joinToString("\n").replace(Regex("\\n{2,}"), "\n")
+                                    } else chapterCache[novel.chapters[index].uriString]?.replace(Regex("\\n{2,}"), "\n")
+                                } else null
+                            }
+                            
+                            viewModel.prefetchAdjacentChapters(
+                                prevText = getChapterText(currentChapterIndex - 1),
+                                nextText = getChapterText(currentChapterIndex + 1)
+                            )
+                        }
+                    }
+
+                    // Bitmap 需要不透明背景（仿真翻页动画需要完整页面）
+                    val bgColorInt = remember(viewModel.config) {
+                        val c = viewModel.config.backgroundColor.color
+                        android.graphics.Color.argb(
+                            (c.alpha * 255).toInt(),
+                            (c.red * 255).toInt(),
+                            (c.green * 255).toInt(),
+                            (c.blue * 255).toInt()
+                        )
+                    }
+
+                    val curPage = viewModel.pages.getOrNull(viewModel.currentPageIndex)
+                    val prevPageData = viewModel.pages.getOrNull(viewModel.currentPageIndex - 1)
+                    val nextPageData = viewModel.pages.getOrNull(viewModel.currentPageIndex + 1)
+                    val pageProgressInfo = viewModel.getProgressText()
+
+                    ReaderBackground(
+                        config = viewModel.config,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                    AndroidView(
                     factory = { ctx ->
                         ReadView(ctx).apply {
                             setReaderConfig(viewModel.config)
                             setBgColor(bgColorInt)
+                            setBgBitmap(bgBitmap, activeOverlayAlpha)
                             setPageData(prevPageData, curPage, nextPageData, pageProgressInfo)
                             onPageChangeListener = object : ReadView.OnPageChangeListener {
                                 override fun onPageChanged(direction: PageDirection) {
+                                    var switchedChapter = false
                                     when (direction) {
                                         PageDirection.NEXT -> {
                                             if (!viewModel.nextPage()) {
                                                 // 本章没有下一页了，切换到下一章
                                                 val nextChapterIdx = currentChapterIndex + 1
                                                 if (nextChapterIdx < novel.chapters.size) {
+                                                    switchedChapter = true
                                                     currentChapterIndex = nextChapterIdx
                                                     requestChapterScroll(nextChapterIdx, 0)
                                                 }
@@ -663,24 +739,26 @@ fun NovelReaderScreen(
                                                 // 本章没有上一页了，切换到上一章
                                                 val prevChapterIdx = currentChapterIndex - 1
                                                 if (prevChapterIdx >= 0) {
+                                                    // 首先明确标记意图：即将发生跨章向上一页跳转
+                                                    viewModel.isJumpingToPreviousChapter = true
+                                                    switchedChapter = true
+                                                    // 触发 LaunchedEffect 去加载此章节的内容，并且借此机会通知提取内容层
                                                     currentChapterIndex = prevChapterIdx
+                                                    // requestChapterScroll 内含 loadChapterBlock 供内容提取层更新 content
                                                     requestChapterScroll(prevChapterIdx, 0)
-                                                    // 跳到上一章的最后一页
-                                                    scrollScope.launch {
-                                                        // 等 loadChapter 完成后跳到最后一页
-                                                        kotlinx.coroutines.delay(100)
-                                                        viewModel.jumpToPage(maxOf(0, viewModel.pages.size - 1))
-                                                    }
                                                 }
                                             }
                                         }
                                         else -> Unit
                                     }
-                                    // 更新页面数据给 ReadView 显示
-                                    val newCur = viewModel.pages.getOrNull(viewModel.currentPageIndex)
-                                    val newPrev = viewModel.pages.getOrNull(viewModel.currentPageIndex - 1)
-                                    val newNext = viewModel.pages.getOrNull(viewModel.currentPageIndex + 1)
-                                    setPageData(newPrev, newCur, newNext, viewModel.getProgressText())
+                                    
+                                    if (!switchedChapter) {
+                                        // 更新页面数据给 ReadView 显示
+                                        val newCur = viewModel.pages.getOrNull(viewModel.currentPageIndex)
+                                        val newPrev = viewModel.pages.getOrNull(viewModel.currentPageIndex - 1)
+                                        val newNext = viewModel.pages.getOrNull(viewModel.currentPageIndex + 1)
+                                        setPageData(newPrev, newCur, newNext, viewModel.getProgressText())
+                                    }
                                 }
                                 override fun hasNextPage(): Boolean = viewModel.currentPageIndex < viewModel.pages.size - 1
                                     || currentChapterIndex < novel.chapters.size - 1
@@ -698,10 +776,11 @@ fun NovelReaderScreen(
                     update = { rv ->
                         rv.setReaderConfig(viewModel.config)
                         rv.setBgColor(bgColorInt)
+                        rv.setBgBitmap(bgBitmap, activeOverlayAlpha)
                         rv.setPageData(
-                            viewModel.pages.getOrNull(viewModel.currentPageIndex - 1),
+                            if (viewModel.currentPageIndex > 0) viewModel.pages.getOrNull(viewModel.currentPageIndex - 1) else viewModel.prevChapterLastPage,
                             viewModel.pages.getOrNull(viewModel.currentPageIndex),
-                            viewModel.pages.getOrNull(viewModel.currentPageIndex + 1),
+                            if (viewModel.currentPageIndex < viewModel.pages.size - 1) viewModel.pages.getOrNull(viewModel.currentPageIndex + 1) else viewModel.nextChapterFirstPage,
                             viewModel.getProgressText()
                         )
                     },
@@ -908,6 +987,13 @@ fun NovelReaderScreen(
                                             .fillMaxWidth()
                                             .clickable {
                                                 showChapterList = false
+                                                // 极其关键：侧边栏跳章时必须强制立即更新 currentChapterIndex 
+                                                // 否则 Compose 可能会因为当前帧还没来得及改变而依然取之前的旧文章渲染
+                                                if (currentChapterIndex != index) {
+                                                    currentChapterIndex = index
+                                                    viewModel.currentPageIndex = 0
+                                                    initialScrollApplied = false
+                                                }
                                                 val targetPosition = if (index == novel.lastReadChapterIndex) {
                                                     novel.lastReadScrollPosition
                                                 } else {
