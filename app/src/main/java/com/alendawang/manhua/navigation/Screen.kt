@@ -6,6 +6,7 @@ import com.alendawang.manhua.model.MediaType
 // --- 屏幕路由 ---
 sealed class Screen {
     object Home : Screen()
+    object Landing : Screen()
     data class Details(val mediaType: MediaType, val mediaId: String, val highlightTrackIndex: Int? = null) : Screen()
     data class ComicReader(val comicId: String, val chapterIndex: Int, val initialScrollIndex: Int) : Screen()
     data class NovelReader(val novelId: String, val chapterIndex: Int, val initialScrollPosition: Int) : Screen()
@@ -16,6 +17,7 @@ val ScreenSaver: Saver<Screen, List<Any>> = Saver(
     save = { screen ->
         when (screen) {
             Screen.Home -> listOf("home")
+            Screen.Landing -> listOf("landing")
             is Screen.Details -> listOf("details", screen.mediaType.name, screen.mediaId, screen.highlightTrackIndex ?: -1)
             is Screen.ComicReader -> listOf("comic", screen.comicId, screen.chapterIndex, screen.initialScrollIndex)
             is Screen.NovelReader -> listOf("novel", screen.novelId, screen.chapterIndex, screen.initialScrollPosition)
@@ -52,6 +54,7 @@ val ScreenSaver: Saver<Screen, List<Any>> = Saver(
                 val showLyricsInitially = saved.getOrNull(4) as? Boolean ?: false
                 Screen.AudioPlayer(audioId, trackIndex, initialPosition, showLyricsInitially)
             }
+            "landing" -> Screen.Landing
             else -> Screen.Home
         }
     }

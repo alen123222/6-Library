@@ -956,7 +956,7 @@ fun ComicApp(
         Scaffold(
             topBar = {
                 AnimatedVisibility(
-                    visible = (currentScreen is Screen.Home) || (currentScreen is Screen.Details),
+                    visible = (currentScreen is Screen.Home) || (currentScreen is Screen.Landing) || (currentScreen is Screen.Details),
                     enter = slideInVertically() + fadeIn(),
                     exit = slideOutVertically() + fadeOut()
                 ) {
@@ -1015,15 +1015,8 @@ fun ComicApp(
                             title = {
                                 Text(
                                     text = when (currentScreen) {
-                                        is Screen.Home -> if (isHiddenModeUnlocked) {
-                                            if (appLanguage == AppLanguage.CHINESE) "隐藏书库" else "Hidden Library"
-                                        } else {
-                                            when (currentMediaType) {
-                                                MediaType.COMIC -> if (appLanguage == AppLanguage.CHINESE) "漫画库" else "Comics"
-                                                MediaType.NOVEL -> if (appLanguage == AppLanguage.CHINESE) "小说库" else "Novels"
-                                                MediaType.AUDIO -> if (appLanguage == AppLanguage.CHINESE) "音频库" else "Audio"
-                                            }
-                                        }
+                                        is Screen.Home -> if (appLanguage == AppLanguage.CHINESE) "主页" else "Home"
+                                        is Screen.Landing -> if (appLanguage == AppLanguage.CHINESE) "使用指南" else "Guide"
                                         is Screen.Details -> {
                                             val detailScreen = currentScreen as Screen.Details
                                             when (detailScreen.mediaType) {
@@ -1041,7 +1034,7 @@ fun ComicApp(
                                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
                                     modifier = Modifier.clickable {
                                         if (currentScreen is Screen.Home) {
-                                            showHelpDialog = true
+                                            currentScreen = Screen.Landing
                                         }
                                     }
                                 )
@@ -1525,6 +1518,9 @@ fun ComicApp(
                                             is Screen.Details -> {
                                                 currentScreen = Screen.Home
                                             }
+                                            is Screen.Landing -> {
+                                                currentScreen = Screen.Home
+                                            }
                                             else -> {}
                                         }
                                     }
@@ -1554,6 +1550,13 @@ fun ComicApp(
 
             Crossfade(targetState = currentScreen, label = "screen", animationSpec = tween(400)) { screen ->
                 when (screen) {
+                    is Screen.Landing -> {
+                        LandingScreen(
+                            paddingValues = paddingValues,
+                            appLanguage = appLanguage,
+                            onShowHelp = { showHelpDialog = true }
+                        )
+                    }
                     is Screen.Home -> {
                         HomeScreen(
                                 paddingValues = paddingValues,
