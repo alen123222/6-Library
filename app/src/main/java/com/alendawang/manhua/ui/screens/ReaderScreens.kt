@@ -575,10 +575,12 @@ fun ReaderScreen(
                         ComicReadMode.SLIDE -> ComicReadMode.SIMULATION
                         ComicReadMode.SIMULATION -> ComicReadMode.SCROLL
                     }
+                    val oldMode = comicReadMode
                     comicReadMode = newMode
                     saveComicReadMode(context, newMode)
-                    // 切换到翻页模式时同步当前滚动位置
-                    if (newMode != ComicReadMode.SCROLL) {
+                    // 只在从滚动模式切换到翻页模式时才同步页码
+                    // 翻页模式之间互切（SLIDE↔SIMULATION）保持 currentImageIndex 不变
+                    if (oldMode == ComicReadMode.SCROLL && newMode != ComicReadMode.SCROLL) {
                         currentImageIndex = lazyListState.firstVisibleItemIndex.coerceIn(0, (images.size - 1).coerceAtLeast(0))
                     }
                 },
