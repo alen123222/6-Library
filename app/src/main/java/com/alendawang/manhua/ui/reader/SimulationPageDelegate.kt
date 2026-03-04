@@ -484,12 +484,11 @@ class SimulationPageDelegate(pageView: PageView) : HorizontalPageDelegate(pageVi
         mBezierControl1.y = mCornerY.toFloat()
         mBezierControl2.x = mCornerX.toFloat()
         val f4 = mCornerY - mMiddleY
-        mBezierControl2.y = if (f4 == 0f) {
-            // 触摸点与角点同 Y 轴时，退到视图边缘外并夹紧，防止极端闪烁
-            (mMiddleY - (mCornerX - mMiddleX) * (mCornerX - mMiddleX))
-                .coerceIn(-viewHeight.toFloat(), 2f * viewHeight)
+        if (f4 == 0f) {
+            mBezierControl2.y = mMiddleY - (mCornerX - mMiddleX) * (mCornerX - mMiddleX) / 0.1f
         } else {
-            mMiddleY - (mCornerX - mMiddleX) * (mCornerX - mMiddleX) / f4
+            mBezierControl2.y =
+                mMiddleY - (mCornerX - mMiddleX) * (mCornerX - mMiddleX) / (mCornerY - mMiddleY)
         }
         mBezierStart1.x = mBezierControl1.x - (mCornerX - mBezierControl1.x) / 2
         mBezierStart1.y = mCornerY.toFloat()
@@ -509,11 +508,12 @@ class SimulationPageDelegate(pageView: PageView) : HorizontalPageDelegate(pageVi
                 mBezierControl1.y = mCornerY.toFloat()
                 mBezierControl2.x = mCornerX.toFloat()
                 val f5 = mCornerY - mMiddleY
-                mBezierControl2.y = if (f5 == 0f) {
-                    (mMiddleY - (mCornerX - mMiddleX) * (mCornerX - mMiddleX))
-                        .coerceIn(-viewHeight.toFloat(), 2f * viewHeight)
+                if (f5 == 0f) {
+                    mBezierControl2.y =
+                        mMiddleY - (mCornerX - mMiddleX) * (mCornerX - mMiddleX) / 0.1f
                 } else {
-                    mMiddleY - (mCornerX - mMiddleX) * (mCornerX - mMiddleX) / f5
+                    mBezierControl2.y =
+                        mMiddleY - (mCornerX - mMiddleX) * (mCornerX - mMiddleX) / (mCornerY - mMiddleY)
                 }
                 mBezierStart1.x = mBezierControl1.x - (mCornerX - mBezierControl1.x) / 2
             }
@@ -538,18 +538,11 @@ class SimulationPageDelegate(pageView: PageView) : HorizontalPageDelegate(pageVi
 
     private fun getCross(P1: PointF, P2: PointF, P3: PointF, P4: PointF): PointF {
         val crossP = PointF()
-        val dx12 = P2.x - P1.x
-        val dx34 = P4.x - P3.x
-        // 垂直线（dx == 0）：返回中点作为降级结果，避免产生 Infinity
-        if (dx12 == 0f || dx34 == 0f) return PointF((P1.x + P3.x) / 2, (P1.y + P3.y) / 2)
-        val a1 = (P2.y - P1.y) / dx12
+        val a1 = (P2.y - P1.y) / (P2.x - P1.x)
         val b1 = (P1.x * P2.y - P2.x * P1.y) / (P1.x - P2.x)
-        val a2 = (P4.y - P3.y) / dx34
+        val a2 = (P4.y - P3.y) / (P4.x - P3.x)
         val b2 = (P3.x * P4.y - P4.x * P3.y) / (P3.x - P4.x)
-        val denom = a1 - a2
-        // 平行线（斜率相等）：返回中点作为降级结果，避免产生 NaN
-        if (denom == 0f) return PointF((P1.x + P3.x) / 2, (P1.y + P3.y) / 2)
-        crossP.x = (b2 - b1) / denom
+        crossP.x = (b2 - b1) / (a1 - a2)
         crossP.y = a1 * crossP.x + b1
         return crossP
     }

@@ -670,7 +670,9 @@ fun NovelReaderScreen(
                             viewModel.viewHeight = viewHeight
                             
                             val title = novel.chapters.getOrNull(currentChapterIndex)?.name ?: ""
-                            viewModel.loadChapter(currentChapterContent, title, viewModel.isJumpingToPreviousChapter)
+                            // 压缩连续换行（TXT 文件段落间常用 \n\n 分隔），避免空行被重复计入 paragraphSpacing
+                            val normalizedContent = currentChapterContent.replace(Regex("\\n{2,}"), "\n")
+                            viewModel.loadChapter(normalizedContent, title, viewModel.isJumpingToPreviousChapter)
                             // 当本章通过loadChapter载入并计算完页码后，重置跳页标志，防止影响下一次进入本页面
                             viewModel.isJumpingToPreviousChapter = false 
 
