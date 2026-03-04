@@ -9,6 +9,8 @@ import android.graphics.Canvas
 class SlidePageDelegate(pageView: PageView) : HorizontalPageDelegate(pageView) {
 
     override fun onAnimStart(animationSpeed: Int) {
+        // NONE 方向不应触发动画
+        if (mDirection == PageDirection.NONE) return
         val distanceX: Float = when (mDirection) {
             PageDirection.NEXT -> {
                 if (isCancel) {
@@ -19,13 +21,14 @@ class SlidePageDelegate(pageView: PageView) : HorizontalPageDelegate(pageView) {
                     -(touchX + (viewWidth - startX))
                 }
             }
-            else -> {
+            PageDirection.PREV -> {
                 if (isCancel) {
                     -(touchX - startX)
                 } else {
                     viewWidth - (touchX - startX)
                 }
             }
+            else -> return
         }
         startScroll(touchX.toInt(), 0, distanceX.toInt(), 0, animationSpeed)
     }

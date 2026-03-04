@@ -24,10 +24,14 @@ abstract class HorizontalPageDelegate(pageView: PageView) : PageDelegate(pageVie
     open fun setBitmap() {
         when (mDirection) {
             PageDirection.PREV -> {
+                // 若上一页 bitmap 尚未就绪则静默拒绝，防止空白帧
+                if (pageView.getPrevBitmap() == null) { mDirection = PageDirection.NONE; return }
                 prevBitmap = pageView.getPrevBitmap()
                 curBitmap = pageView.getCurBitmap()
             }
             PageDirection.NEXT -> {
+                // 若下一页 bitmap 尚未就绪则静默拒绝，防止空白帧
+                if (pageView.getNextBitmap() == null) { mDirection = PageDirection.NONE; return }
                 nextBitmap = pageView.getNextBitmap()
                 curBitmap = pageView.getCurBitmap()
             }
@@ -123,7 +127,9 @@ abstract class HorizontalPageDelegate(pageView: PageView) : PageDelegate(pageVie
         abortAnim()
         if (!hasPrev()) return
         setDirection(PageDirection.PREV)
-        pageView.setStartPoint(0f, viewHeight.toFloat(), false)
+        // 与 nextPageByAnim 对称：根据上次触摸位置决定起始 Y，让动画更自然
+        val y = if (startY > viewHeight / 2) viewHeight.toFloat() * 0.9f else 1f
+        pageView.setStartPoint(0f, y, false)
         onAnimStart(animationSpeed)
     }
 
