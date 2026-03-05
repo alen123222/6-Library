@@ -97,10 +97,11 @@ fun NovelSettingsDialog(
     onClearBackground: () -> Unit
 ) {
     val scrollState = rememberScrollState()
-    val maxDialogHeight = (LocalConfiguration.current.screenHeightDp.dp * 0.8f).coerceAtLeast(240.dp)
+    val maxDialogHeight = (LocalConfiguration.current.screenHeightDp.dp * 0.85f).coerceAtLeast(240.dp)
+    var showTextColorPicker by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("阅读设置") },
+        title = { Text("阅读设置", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) },
         text = {
             Box(
                 modifier = Modifier
@@ -110,197 +111,115 @@ fun NovelSettingsDialog(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .verticalScroll(scrollState),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                        .verticalScroll(scrollState)
                 ) {
-                    // 字号
-                    Text("字号: ${config.fontSize.toInt()}")
-                    Slider(
-                        value = config.fontSize,
-                        onValueChange = { onConfigChange(config.copy(fontSize = it)) },
-                        valueRange = 12f..36f,
-                        steps = 24
-                    )
 
-                    // 行间距
-                    Text("行间距: ${String.format("%.1f", config.lineHeightRatio)}")
-                    Slider(
-                        value = config.lineHeightRatio,
-                        onValueChange = { onConfigChange(config.copy(lineHeightRatio = it)) },
-                        valueRange = 1.2f..2.5f,
-                        steps = 13
-                    )
-
-                    // 段落间距
-                    Text("段落间距: ${config.paragraphSpacing.toInt()}")
-                    Slider(
-                        value = config.paragraphSpacing,
-                        onValueChange = { onConfigChange(config.copy(paragraphSpacing = it)) },
-                        valueRange = 8f..32f,
-                        steps = 12
-                    )
-
-                    // 左右边距
-                    Text("左右边距: ${config.horizontalPadding.toInt()}")
-                    Slider(
-                        value = config.horizontalPadding,
-                        onValueChange = { onConfigChange(config.copy(horizontalPadding = it)) },
-                        valueRange = 8f..32f,
-                        steps = 12
-                    )
-
-                    // 背景颜色
-                    Text("背景颜色")
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        ReaderBackgroundColor.values().forEach { bgColor ->
-                            FilterChip(
-                                selected = config.backgroundColor == bgColor,
-                                onClick = { onConfigChange(config.copy(backgroundColor = bgColor)) },
-                                label = { Text(bgColor.label, fontSize = 12.sp) },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = bgColor.color,
-                                    selectedLabelColor = bgColor.textColor
-                                )
-                            )
-                        }
-                    }
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("自定义背景")
+                    // ── 字号 ──────────────────────────────────────────────────
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                     ) {
-                        Button(onClick = onPickBackground) { Text("选择图片") }
-                        if (config.customBackgroundUriString != null) {
-                            OutlinedButton(onClick = onClearBackground) { Text("清除") }
+                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            Icon(Icons.Rounded.FormatSize, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("字号", style = MaterialTheme.typography.bodyMedium)
                         }
-                    }
-                    if (config.customBackgroundUriString != null) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("遮罩强度: ${(config.customBackgroundOverlayAlpha * 100).toInt()}")
-                        Slider(
-                            value = config.customBackgroundOverlayAlpha,
-                            onValueChange = {
-                                onConfigChange(
-                                    config.copy(customBackgroundOverlayAlpha = it.coerceIn(0f, 1f))
-                                )
-                            },
-                            valueRange = 0f..1f,
-                            steps = 99
-                        )
-                    }
-
-                    
-                    // 字体颜色
-                    Text("字体颜色")
-                    var showTextColorPicker by remember { mutableStateOf(false) }
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        // 预设颜色
-                        val textColors = listOf(
-                            "默认" to null,
-                            "黑色" to Color.Black.toArgb(),
-                            "深灰" to Color.DarkGray.toArgb(),
-                            "灰色" to Color.Gray.toArgb(),
-                            "白色" to Color.White.toArgb()
-                        )
-                        
-                        textColors.forEach { (label, colorInt) ->
-                            FilterChip(
-                                selected = config.customTextColor == colorInt,
-                                onClick = { onConfigChange(config.copy(customTextColor = colorInt)) },
-                                label = { Text(label, fontSize = 12.sp) },
-                                leadingIcon = if (colorInt != null) {
-                                    {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(12.dp)
-                                                .clip(CircleShape)
-                                                .background(Color(colorInt))
-                                                .border(1.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
-                                        )
-                                    }
-                                } else null
-                            )
-                        }
-                        
-                        // 自定义按钮
-                        FilterChip(
-                            selected = config.customTextColor != null && textColors.none { it.second == config.customTextColor },
-                            onClick = { showTextColorPicker = true },
-                            label = { Text("自定义", fontSize = 12.sp) },
-                            leadingIcon = { Icon(Icons.Rounded.Tune, null, modifier = Modifier.size(14.dp)) }
-                        )
-                    }
-
-                    if (showTextColorPicker) {
-                        var red by remember { mutableFloatStateOf(config.customTextColor?.let { Color(it).red } ?: 0f) }
-                        var green by remember { mutableFloatStateOf(config.customTextColor?.let { Color(it).green } ?: 0f) }
-                        var blue by remember { mutableFloatStateOf(config.customTextColor?.let { Color(it).blue } ?: 0f) }
-                        
-                        AlertDialog(
-                            onDismissRequest = { showTextColorPicker = false },
-                            title = { Text("自定义字体颜色") },
-                            text = {
-                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(50.dp)
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .background(Color(red, green, blue))
-                                            .border(1.dp, MaterialTheme.colorScheme.onSurface, RoundedCornerShape(8.dp))
-                                    )
-                                    Text("红: ${(red * 255).toInt()}")
-                                    Slider(value = red, onValueChange = { red = it })
-                                    Text("绿: ${(green * 255).toInt()}")
-                                    Slider(value = green, onValueChange = { green = it })
-                                    Text("蓝: ${(blue * 255).toInt()}")
-                                    Slider(value = blue, onValueChange = { blue = it })
-                                }
-                            },
-                            confirmButton = {
-                                TextButton(onClick = {
-                                    onConfigChange(config.copy(customTextColor = Color(red, green, blue).toArgb()))
-                                    showTextColorPicker = false
-                                }) { Text("确定") }
-                            },
-                            dismissButton = {
-                                TextButton(onClick = { showTextColorPicker = false }) { Text("取消") }
+                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            IconButton(onClick = { if (config.fontSize > 12f) onConfigChange(config.copy(fontSize = config.fontSize - 1f)) }, modifier = Modifier.size(32.dp)) {
+                                Icon(Icons.Rounded.Remove, null, modifier = Modifier.size(16.dp))
                             }
-                        )
-                    }
-                    Text("字体类型")
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        FontType.values().forEach { font ->
-                            FilterChip(
-                                selected = config.fontType == font,
-                                onClick = { onConfigChange(config.copy(fontType = font)) },
-                                label = { Text(font.label, fontSize = 12.sp) }
-                            )
+                            Text("${config.fontSize.toInt()} sp", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.widthIn(min = 52.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                            IconButton(onClick = { if (config.fontSize < 36f) onConfigChange(config.copy(fontSize = config.fontSize + 1f)) }, modifier = Modifier.size(32.dp)) {
+                                Icon(Icons.Rounded.Add, null, modifier = Modifier.size(16.dp))
+                            }
                         }
-                }
+                    }
 
-                    // 翻页模式
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("翻页模式")
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
+
+                    // ── 行间距 ────────────────────────────────────────────────
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            Icon(Icons.Rounded.FormatLineSpacing, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("行间距", style = MaterialTheme.typography.bodyMedium)
+                        }
+                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            IconButton(onClick = { val v = (config.lineHeightRatio - 0.1f).coerceAtLeast(1.2f); onConfigChange(config.copy(lineHeightRatio = (v * 10).toInt() / 10f)) }, modifier = Modifier.size(32.dp)) {
+                                Icon(Icons.Rounded.Remove, null, modifier = Modifier.size(16.dp))
+                            }
+                            Text(String.format("%.1f", config.lineHeightRatio) + "x", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.widthIn(min = 52.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                            IconButton(onClick = { val v = (config.lineHeightRatio + 0.1f).coerceAtMost(2.5f); onConfigChange(config.copy(lineHeightRatio = (v * 10).toInt() / 10f)) }, modifier = Modifier.size(32.dp)) {
+                                Icon(Icons.Rounded.Add, null, modifier = Modifier.size(16.dp))
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
+
+                    // ── 段落间距 ──────────────────────────────────────────────
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            Icon(Icons.Rounded.SpaceBar, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("段落间距", style = MaterialTheme.typography.bodyMedium)
+                        }
+                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            IconButton(onClick = { if (config.paragraphSpacing > 4f) onConfigChange(config.copy(paragraphSpacing = config.paragraphSpacing - 2f)) }, modifier = Modifier.size(32.dp)) {
+                                Icon(Icons.Rounded.Remove, null, modifier = Modifier.size(16.dp))
+                            }
+                            Text("${config.paragraphSpacing.toInt()} dp", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.widthIn(min = 52.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                            IconButton(onClick = { if (config.paragraphSpacing < 40f) onConfigChange(config.copy(paragraphSpacing = config.paragraphSpacing + 2f)) }, modifier = Modifier.size(32.dp)) {
+                                Icon(Icons.Rounded.Add, null, modifier = Modifier.size(16.dp))
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
+
+                    // ── 左右边距 ──────────────────────────────────────────────
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            Icon(Icons.Rounded.FormatIndentIncrease, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("左右边距", style = MaterialTheme.typography.bodyMedium)
+                        }
+                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            IconButton(onClick = { if (config.horizontalPadding > 8f) onConfigChange(config.copy(horizontalPadding = config.horizontalPadding - 2f)) }, modifier = Modifier.size(32.dp)) {
+                                Icon(Icons.Rounded.Remove, null, modifier = Modifier.size(16.dp))
+                            }
+                            Text("${config.horizontalPadding.toInt()} dp", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.widthIn(min = 52.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                            IconButton(onClick = { if (config.horizontalPadding < 40f) onConfigChange(config.copy(horizontalPadding = config.horizontalPadding + 2f)) }, modifier = Modifier.size(32.dp)) {
+                                Icon(Icons.Rounded.Add, null, modifier = Modifier.size(16.dp))
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
+
+                    // ── 翻页模式 ──────────────────────────────────────────────
+                    Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 6.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.AutoStories, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("翻页模式", style = MaterialTheme.typography.bodyMedium)
+                    }
                     FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         PageFlipMode.values().forEach { mode ->
                             FilterChip(
@@ -310,13 +229,175 @@ fun NovelSettingsDialog(
                             )
                         }
                     }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
+
+                    // ── 背景设置（预设颜色 + 自定义图片合并）────────────────────
+                    Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 6.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.ColorLens, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("背景设置", style = MaterialTheme.typography.bodyMedium)
+                    }
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        // 预设背景颜色
+                        ReaderBackgroundColor.values().forEach { bgColor ->
+                            FilterChip(
+                                selected = config.backgroundColor == bgColor && config.customBackgroundUriString == null,
+                                onClick = {
+                                    onConfigChange(config.copy(backgroundColor = bgColor, customBackgroundUriString = null))
+                                    onClearBackground()
+                                },
+                                label = { Text(bgColor.label, fontSize = 12.sp) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = bgColor.color,
+                                    selectedLabelColor = bgColor.textColor
+                                )
+                            )
+                        }
+                        // 自定义图片 Chip
+                        val hasCustomBg = config.customBackgroundUriString != null
+                        FilterChip(
+                            selected = hasCustomBg,
+                            onClick = onPickBackground,
+                            label = { Text("自定义", fontSize = 12.sp) },
+                            leadingIcon = { Icon(Icons.Rounded.Image, null, modifier = Modifier.size(14.dp)) }
+                        )
+                        // 已选图片时显示清除
+                        if (hasCustomBg) {
+                            FilterChip(
+                                selected = false,
+                                onClick = onClearBackground,
+                                label = { Text("清除图片", fontSize = 12.sp) },
+                                leadingIcon = { Icon(Icons.Rounded.Close, null, modifier = Modifier.size(14.dp)) }
+                            )
+                        }
+                    }
+                    // 自定义图片遮罩强度
+                    if (config.customBackgroundUriString != null) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                        ) {
+                            Text("遮罩强度", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("${(config.customBackgroundOverlayAlpha * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Slider(
+                            value = config.customBackgroundOverlayAlpha,
+                            onValueChange = { onConfigChange(config.copy(customBackgroundOverlayAlpha = it.coerceIn(0f, 1f))) },
+                            valueRange = 0f..1f, steps = 99,
+                            modifier = Modifier.padding(horizontal = 4.dp)
+                        )
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
+
+                    // ── 字体颜色（彩色圆圈 UI）────────────────────────────────
+                    Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 6.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.Palette, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("字体颜色", style = MaterialTheme.typography.bodyMedium)
+                    }
+                    val textColorPresets = listOf(
+                        null,
+                        Color.Black.toArgb(),
+                        Color(0xFF333333).toArgb(),
+                        Color(0xFF888888).toArgb(),
+                        Color.White.toArgb()
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                    ) {
+                        FilterChip(
+                            selected = config.customTextColor == null,
+                            onClick = { onConfigChange(config.copy(customTextColor = null)) },
+                            label = { Text("跟随", fontSize = 11.sp) }
+                        )
+                        textColorPresets.filterNotNull().forEach { colorInt ->
+                            val isSelected = config.customTextColor == colorInt
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(colorInt))
+                                    .border(width = if (isSelected) 3.dp else 1.dp, color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Gray, shape = CircleShape)
+                                    .clickable { onConfigChange(config.copy(customTextColor = colorInt)) },
+                                contentAlignment = androidx.compose.ui.Alignment.Center
+                            ) {
+                                if (isSelected) Icon(Icons.Rounded.Check, null, tint = if (colorInt == Color.White.toArgb()) Color.Black else Color.White, modifier = Modifier.size(16.dp))
+                            }
+                        }
+                        val hasCustomTc = config.customTextColor != null && textColorPresets.none { it == config.customTextColor }
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(if (hasCustomTc) Color(config.customTextColor!!) else MaterialTheme.colorScheme.surfaceVariant)
+                                .border(width = if (hasCustomTc) 3.dp else 1.dp, color = if (hasCustomTc) MaterialTheme.colorScheme.primary else Color.Gray, shape = CircleShape)
+                                .clickable { showTextColorPicker = true },
+                            contentAlignment = androidx.compose.ui.Alignment.Center
+                        ) {
+                            Icon(Icons.Rounded.Tune, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(14.dp))
+                        }
+                    }
+                    if (showTextColorPicker) {
+                        var red   by remember { mutableFloatStateOf(config.customTextColor?.let { Color(it).red }   ?: 0f) }
+                        var green by remember { mutableFloatStateOf(config.customTextColor?.let { Color(it).green } ?: 0f) }
+                        var blue  by remember { mutableFloatStateOf(config.customTextColor?.let { Color(it).blue }  ?: 0f) }
+                        AlertDialog(
+                            onDismissRequest = { showTextColorPicker = false },
+                            title = { Text("自定义字体颜色") },
+                            text = {
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Box(modifier = Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(8.dp)).background(Color(red, green, blue)).border(1.dp, MaterialTheme.colorScheme.onSurface, RoundedCornerShape(8.dp)))
+                                    Text("红: ${(red * 255).toInt()}"); Slider(value = red, onValueChange = { red = it })
+                                    Text("绿: ${(green * 255).toInt()}"); Slider(value = green, onValueChange = { green = it })
+                                    Text("蓝: ${(blue * 255).toInt()}"); Slider(value = blue, onValueChange = { blue = it })
+                                }
+                            },
+                            confirmButton = { TextButton(onClick = { onConfigChange(config.copy(customTextColor = Color(red, green, blue).toArgb())); showTextColorPicker = false }) { Text("确定") } },
+                            dismissButton = { TextButton(onClick = { showTextColorPicker = false }) { Text("取消") } }
+                        )
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
+
+                    // ── 字体类型 ────────────────────────────────────────────
+                    Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 6.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.TextFields, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("字体类型", style = MaterialTheme.typography.bodyMedium)
+                    }
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        val fontFamilyMap = mapOf(
+                            FontType.System    to androidx.compose.ui.text.font.FontFamily.Default,
+                            FontType.Serif     to androidx.compose.ui.text.font.FontFamily.Serif,
+                            FontType.SansSerif to androidx.compose.ui.text.font.FontFamily.SansSerif,
+                            FontType.Monospace to androidx.compose.ui.text.font.FontFamily.Monospace
+                        )
+                        FontType.values().forEach { font ->
+                            FilterChip(
+                                selected = config.fontType == font,
+                                onClick = { onConfigChange(config.copy(fontType = font)) },
+                                label = { Text(font.label, fontSize = 13.sp, fontFamily = fontFamilyMap[font]) }
+                            )
+                        }
+                    }
                 }
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("完成")
-            }
+            TextButton(onClick = onDismiss) { Text("完成") }
         }
     )
 }
