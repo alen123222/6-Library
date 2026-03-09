@@ -1554,6 +1554,8 @@ fun ComicApp(
                         LandingScreen(
                             paddingValues = paddingValues,
                             appLanguage = appLanguage,
+                            customBackgroundUri = customHomeBackgroundUri,
+                            customBackgroundAlpha = customHomeBackgroundAlpha,
                             onShowHelp = { showHelpDialog = true }
                         )
                     }

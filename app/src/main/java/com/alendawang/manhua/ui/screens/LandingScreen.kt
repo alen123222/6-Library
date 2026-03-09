@@ -15,16 +15,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.alendawang.manhua.model.AppLanguage
 
 @Composable
 fun LandingScreen(
     paddingValues: PaddingValues,
     appLanguage: AppLanguage,
+    customBackgroundUri: String? = null,
+    customBackgroundAlpha: Float = 0.4f,
     onShowHelp: () -> Unit
 ) {
+    val context = LocalContext.current
     val infiniteTransition = rememberInfiniteTransition(label = "landing")
     val gradientShift by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -41,6 +48,19 @@ fun LandingScreen(
             .fillMaxSize()
             .padding(paddingValues)
     ) {
+        // 自定义背景
+        if (customBackgroundUri != null) {
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(customBackgroundUri)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+                alpha = customBackgroundAlpha
+            )
+        }
         androidx.compose.foundation.lazy.LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
