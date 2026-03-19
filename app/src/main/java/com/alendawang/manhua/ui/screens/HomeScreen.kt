@@ -1,4 +1,4 @@
-﻿package com.alendawang.manhua.ui.screens
+package com.alendawang.manhua.ui.screens
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -29,10 +29,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil.ImageLoader
 import coil.compose.AsyncImage
 import coil.request.CachePolicy
 import coil.request.ImageRequest
+import com.alendawang.manhua.ImageLoaderSingleton
 import com.alendawang.manhua.model.AppTheme
 import com.alendawang.manhua.model.AudioDisplayMode
 import com.alendawang.manhua.model.AudioHistory
@@ -107,7 +107,7 @@ fun HomeScreen(
 
     // 优化 5: 预加载可见区域的图片
     LaunchedEffect(historyList) {
-        val imageLoader = ImageLoader.Builder(context).build()
+        val imageLoader = ImageLoaderSingleton.get(context)
         historyList.take(10).forEach { item ->
             item.coverUriString?.let { uri ->
                 val request = ImageRequest.Builder(context)

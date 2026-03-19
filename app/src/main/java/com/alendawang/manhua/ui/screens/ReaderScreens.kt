@@ -47,7 +47,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import coil.ImageLoader
+import com.alendawang.manhua.ImageLoaderSingleton
 import coil.compose.AsyncImage
 import coil.request.CachePolicy
 import coil.request.ImageRequest
@@ -100,7 +100,7 @@ fun ReaderScreen(
 
     // 翻页模式状态
     var currentImageIndex by remember { mutableIntStateOf(initialIndex.coerceIn(0, (images.size - 1).coerceAtLeast(0))) }
-    val imageLoader = remember { ImageLoader.Builder(context).build() }
+    val imageLoader = remember { ImageLoaderSingleton.get(context) }
 
     // ComicReadView 引用，用于 LaunchedEffect 直接设置 Bitmap
     val comicReadViewRef = remember { mutableStateOf<ComicReadView?>(null) }

@@ -1,4 +1,4 @@
-﻿package com.alendawang.manhua.ui.screens
+package com.alendawang.manhua.ui.screens
 
 import android.app.Activity
 import android.content.Intent
@@ -644,7 +644,7 @@ fun NovelReaderScreen(
                             val request = coil.request.ImageRequest.Builder(context)
                                 .data(uri)
                                 .build()
-                            val result = coil.ImageLoader(context).execute(request)
+                            val result = com.alendawang.manhua.ImageLoaderSingleton.get(context).execute(request)
                             if (result is coil.request.SuccessResult) {
                                 bgBitmap = (result.drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap
                             }
