@@ -37,7 +37,7 @@ fun clearComicImageCache(context: Context, chapterUri: android.net.Uri, internal
 // --- 清理所有漫画图片缓存 (应用启动时调用，保留封面) ---
 fun clearAllComicImageCaches(context: Context) {
     try {
-        // 删除所有漫画图片缓存
+        // 删除所有漫画图片缓存 (PDF 渲染页等)
         val comicImagesDir = File(context.cacheDir, "comic_images")
         if (comicImagesDir.exists() && comicImagesDir.isDirectory) {
             comicImagesDir.deleteRecursively()
@@ -48,6 +48,15 @@ fun clearAllComicImageCaches(context: Context) {
         if (archivesDir.exists() && archivesDir.isDirectory) {
             archivesDir.deleteRecursively()
         }
+        
+        // 删除所有 ZIP 本地缓存副本
+        val zipCacheDir = File(context.cacheDir, "zip_cache")
+        if (zipCacheDir.exists() && zipCacheDir.isDirectory) {
+            zipCacheDir.deleteRecursively()
+        }
+        
+        // 清除 ZIP 编码检测缓存
+        com.alendawang.manhua.utils.ZipCharsetCache.clear()
         
         // 注意: 保留 comic_covers/ 目录中的封面
     } catch (e: Exception) {

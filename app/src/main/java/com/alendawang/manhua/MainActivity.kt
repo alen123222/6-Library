@@ -1,4 +1,4 @@
-﻿package com.alendawang.manhua
+package com.alendawang.manhua
 
 import android.content.Context
 import android.content.Intent
@@ -1741,7 +1741,7 @@ fun ComicApp(
                         } else {
                             // 使用 key 绑定到漫画+章节，确保切换时状态正确重置
                             var images by remember(screen.comicId, screen.chapterIndex) { 
-                                mutableStateOf<List<Uri>?>(null) 
+                                mutableStateOf<List<Any>?>(null) 
                             }
                             val chapter = comic.chapters.getOrNull(screen.chapterIndex)
                             

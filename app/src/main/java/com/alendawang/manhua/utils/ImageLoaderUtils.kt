@@ -7,6 +7,7 @@ import android.graphics.pdf.PdfRenderer
 import android.os.Build
 import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
+import com.alendawang.manhua.model.ArchiveImageRef
 import com.alendawang.manhua.model.ComicSourceType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -20,6 +21,7 @@ import java.util.zip.ZipInputStream
 import com.github.junrar.Archive
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
+import java.util.zip.ZipFile as JZipFile
 
 // --- 封面压缩配置（分档） ---
 data class CoverConfig(
@@ -473,12 +475,81 @@ internal fun getCachedArchiveFile(context: Context, uri: Uri, ext: String): File
     }
 }
 
+// --- 从 ZIP 收集图片引用（不解压，仅遍历条目名）---
+suspend fun collectZipImageRefs(context: Context, zipUri: Uri, internalPath: String? = null): List<ArchiveImageRef> = withContext(Dispatchers.IO) {
+    try {
+        // 将 ZIP 缓存到本地以支持 ZipFile 随机访问
+        val localFile = getOrCacheZipFile(context, zipUri) ?: return@withContext emptyList()
+
+        val charset = ZipCharsetCache.get(context, zipUri)
+        val zipFile = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            JZipFile(localFile, charset)
+        } else {
+            JZipFile(localFile)
+        }
+
+        try {
+            val imageEntries = zipFile.entries().asSequence()
+                .filter { !it.isDirectory && isImageFile(it.name) &&
+                    (internalPath == null || it.name.startsWith(internalPath)) }
+                .map { it.name }
+                .toMutableList()
+
+            imageEntries.sortWith { a, b ->
+                compareNatural(a.substringAfterLast('/'), b.substringAfterLast('/'))
+            }
+
+            imageEntries.mapIndexed { index, name ->
+                ArchiveImageRef(zipUri, name, index, ComicSourceType.ZIP)
+            }
+        } finally {
+            zipFile.close()
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
+        emptyList()
+    }
+}
+
+// --- 从 RAR 收集图片引用（不解压，仅读取 header）---
+suspend fun collectRarImageRefs(context: Context, rarUri: Uri, internalPath: String? = null): List<ArchiveImageRef> = withContext(Dispatchers.IO) {
+    try {
+        val cacheFile = getCachedArchiveFile(context, rarUri, "rar") ?: return@withContext emptyList()
+        val archive = Archive(cacheFile)
+        try {
+            val refs = archive.fileHeaders
+                .filter { !it.isDirectory && isImageFile(it.fileName) &&
+                    (internalPath == null || it.fileName.startsWith(internalPath)) }
+                .sortedWith { a, b ->
+                    compareNatural(a.fileName.substringAfterLast('/'), b.fileName.substringAfterLast('/'))
+                }
+                .mapIndexed { index, header ->
+                    ArchiveImageRef(rarUri, header.fileName, index, ComicSourceType.RAR)
+                }
+            refs
+        } finally {
+            archive.close()
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
+        emptyList()
+    }
+}
+
+// --- 从条目列表中统计图片数量（内存计算，不需要 IO）---
+internal fun countImagesInEntries(entries: List<String>, internalPath: String? = null): Int {
+    return entries.count { entry ->
+        !entry.endsWith('/') && isImageFile(entry) &&
+        (internalPath == null || entry.startsWith(internalPath))
+    }
+}
+
 // --- 加载漫画图片 (统一入口) ---
-suspend fun loadComicImages(context: Context, chapterUri: Uri, sourceType: ComicSourceType = ComicSourceType.FOLDER, internalPath: String? = null, onResult: (List<Uri>) -> Unit) {
+suspend fun loadComicImages(context: Context, chapterUri: Uri, sourceType: ComicSourceType = ComicSourceType.FOLDER, internalPath: String? = null, onResult: (List<Any>) -> Unit) {
     withContext(Dispatchers.IO) {
-        val images = when (sourceType) {
-            ComicSourceType.ZIP -> loadImagesFromZip(context, chapterUri, internalPath)
-            ComicSourceType.RAR -> loadImagesFromRar(context, chapterUri, internalPath)
+        val images: List<Any> = when (sourceType) {
+            ComicSourceType.ZIP -> collectZipImageRefs(context, chapterUri, internalPath)
+            ComicSourceType.RAR -> collectRarImageRefs(context, chapterUri, internalPath)
             ComicSourceType.PDF -> loadImagesFromPdf(context, chapterUri)
             ComicSourceType.FOLDER -> loadImagesFromFolder(context, chapterUri)
         }

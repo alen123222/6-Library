@@ -53,6 +53,7 @@ import coil.request.CachePolicy
 import coil.request.ImageRequest
 import coil.request.SuccessResult
 import com.alendawang.manhua.R
+import com.alendawang.manhua.model.ArchiveImageRef
 import com.alendawang.manhua.model.AudioHistory
 import com.alendawang.manhua.model.AudioPlayerConfig
 import com.alendawang.manhua.model.ComicReadMode
@@ -76,7 +77,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun ReaderScreen(
     paddingValues: PaddingValues,
-    images: List<Uri>,
+    images: List<Any>,
     lazyListState: LazyListState,
     initialIndex: Int,
     isBarsVisible: Boolean,
@@ -137,9 +138,9 @@ fun ReaderScreen(
             preloadRange.forEach { index ->
                 // 跳过已直接加载的三页
                 if (index !in (currentImageIndex - 1)..(currentImageIndex + 1)) {
-                    images.getOrNull(index)?.let { uri ->
+                    images.getOrNull(index)?.let { imageData ->
                         val request = ImageRequest.Builder(context)
-                            .data(uri)
+                            .data(imageData)
                             .memoryCachePolicy(CachePolicy.ENABLED)
                             .diskCachePolicy(CachePolicy.ENABLED)
                             .build()
@@ -212,9 +213,9 @@ fun ReaderScreen(
             val visibleStart = lazyListState.firstVisibleItemIndex
             val preloadRange = (visibleStart - 2).coerceAtLeast(0)..(visibleStart + 5).coerceAtMost(images.size - 1)
             preloadRange.forEach { index ->
-                images.getOrNull(index)?.let { uri ->
+                images.getOrNull(index)?.let { imageData ->
                     val request = ImageRequest.Builder(context)
-                        .data(uri)
+                        .data(imageData)
                         .size(screenWidth.toInt())
                         .memoryCachePolicy(CachePolicy.ENABLED)
                         .diskCachePolicy(CachePolicy.ENABLED)
@@ -349,7 +350,12 @@ fun ReaderScreen(
                     ),
                 verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
-                items(images, key = { it.toString() }) { uri ->
+                items(images, key = { 
+                    when (it) {
+                        is ArchiveImageRef -> it.cacheKey()
+                        else -> it.toString()
+                    }
+                }) { imageData ->
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -359,7 +365,7 @@ fun ReaderScreen(
                             ) { onToggleBars() }
                     ) {
                         val model = ImageRequest.Builder(context)
-                            .data(uri)
+                            .data(imageData)
                             .size(screenWidth.toInt())
                             .memoryCachePolicy(CachePolicy.ENABLED)
                             .diskCachePolicy(CachePolicy.ENABLED)
@@ -369,6 +375,7 @@ fun ReaderScreen(
                         coil.compose.SubcomposeAsyncImage(
                             model = model,
                             contentDescription = null,
+                            imageLoader = imageLoader,
                             modifier = Modifier.fillMaxWidth(),
                             contentScale = ContentScale.FillWidth,
                             loading = {

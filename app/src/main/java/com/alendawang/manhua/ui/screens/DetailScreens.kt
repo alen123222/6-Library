@@ -66,13 +66,8 @@ fun ComicDetailScreen(
             .diskCachePolicy(CachePolicy.ENABLED)
             .build()
     }
-    var totalPages by rememberSaveable(comic.id) { mutableIntStateOf(-1) }
-    var currentPage by rememberSaveable(comic.id) { mutableIntStateOf(-1) }
-    LaunchedEffect(comic.id, comic.lastReadChapterIndex, comic.lastReadIndex) {
-        val (total, current) = computeComicProgress(context, comic)
-        totalPages = total
-        currentPage = current
-    }
+    val totalPages = comic.cachedTotalPages
+    val currentPage = comic.cachedCurrentPage
 
     val maskStartAlpha = overlayAlpha.coerceIn(0f, 1f)
     val maskEndAlpha = (maskStartAlpha + 0.35f).coerceIn(0f, 1f)

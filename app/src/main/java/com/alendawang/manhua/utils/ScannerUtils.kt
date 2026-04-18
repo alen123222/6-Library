@@ -118,11 +118,8 @@ fun scanComicsFlow(
             var coverUri: String? = null
             
             if (leafDirs.isEmpty()) {
-                val pageCount = when (sourceType) {
-                    ComicSourceType.ZIP -> countImagesInZip(context, level1File.uri)
-                    ComicSourceType.RAR -> countImagesInRar(context, level1File.uri)
-                    else -> 0
-                }
+                // 直接从已收集的条目列表中计数（无需再次遍历压缩包）
+                val pageCount = countImagesInEntries(allEntries)
                 if (pageCount > 0) {
                     chapters = listOf(ComicChapter("全一册", fileUri, sourceType))
                     totalPages = pageCount
@@ -138,11 +135,8 @@ fun scanComicsFlow(
                 val chapterList = mutableListOf<ComicChapter>()
                 for (dir in leafDirs) {
                     val chapterName = dir.trimEnd('/').substringAfterLast('/')
-                    val pageCount = when (sourceType) {
-                        ComicSourceType.ZIP -> countImagesInZip(context, level1File.uri, dir)
-                        ComicSourceType.RAR -> countImagesInRar(context, level1File.uri, dir)
-                        else -> 0
-                    }
+                    // 直接从已收集的条目列表中计数（无需再次遍历压缩包）
+                    val pageCount = countImagesInEntries(allEntries, dir)
                     if (pageCount > 0) {
                         chapterList.add(ComicChapter(chapterName, fileUri, sourceType, dir))
                         totalPages += pageCount
