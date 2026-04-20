@@ -114,6 +114,8 @@ fun ReaderScreen(
                 val request = ImageRequest.Builder(context)
                     .data(images[index])
                     .allowHardware(false)
+                    // 只约束宽度为屏幕宽度，不约束高度，保证长条图不被降采样模糊
+                    .size(coil.size.Size(coil.size.Dimension(screenWidth.toInt()), coil.size.Dimension.Undefined))
                     .build()
                 val result = imageLoader.execute(request)
                 if (result is SuccessResult) {
@@ -216,7 +218,7 @@ fun ReaderScreen(
                 images.getOrNull(index)?.let { imageData ->
                     val request = ImageRequest.Builder(context)
                         .data(imageData)
-                        .size(screenWidth.toInt())
+                        .size(coil.size.Size(coil.size.Dimension(screenWidth.toInt()), coil.size.Dimension.Undefined))
                         .memoryCachePolicy(CachePolicy.ENABLED)
                         .diskCachePolicy(CachePolicy.ENABLED)
                         .build()
@@ -366,7 +368,8 @@ fun ReaderScreen(
                     ) {
                         val model = ImageRequest.Builder(context)
                             .data(imageData)
-                            .size(screenWidth.toInt())
+                            // 只约束宽度，不约束高度，避免长条韩漫被降采样导致模糊
+                            .size(coil.size.Size(coil.size.Dimension(screenWidth.toInt()), coil.size.Dimension.Undefined))
                             .memoryCachePolicy(CachePolicy.ENABLED)
                             .diskCachePolicy(CachePolicy.ENABLED)
                             .crossfade(false)

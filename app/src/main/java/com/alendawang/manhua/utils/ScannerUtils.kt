@@ -196,7 +196,12 @@ fun scanComicsFlow(
         var totalPages = 0
         
         val folderChapters = subFiles.filter { it.isDirectory }
+        val archiveChapterFiles = subFiles.filter { 
+            it.isFile && it.name?.substringAfterLast('.', "")?.lowercase() in archiveExtensions 
+        }.sortedWith { a, b -> compareNatural(a.name ?: "", b.name ?: "") }
+        
         if (folderChapters.isNotEmpty()) {
+            // 子文件夹作为章节
             folderChapters.forEach { chFolder -> 
                 chapters.add(ComicChapter(chFolder.name ?: "Chapter", chFolder.uri.toString(), ComicSourceType.FOLDER))
                 val chapterImageCount = chFolder.listFiles().count { it.isFile && it.type?.startsWith("image/") == true }
@@ -204,7 +209,43 @@ fun scanComicsFlow(
             }
             val firstChapterImages = folderChapters.first().listFiles().filter { it.isFile && it.type?.startsWith("image/") == true }
             if (firstChapterImages.isNotEmpty()) coverUri = firstChapterImages.sortedWith { a, b -> compareNatural(a.name?:"", b.name?:"") }.first().uri.toString()
+        } else if (archiveChapterFiles.isNotEmpty()) {
+            // 压缩包文件作为章节（支持 漫画一/01.zip, 02.zip 这种结构）
+            for (archiveFile in archiveChapterFiles) {
+                currentCoroutineContext().ensureActive()
+                val archiveName = archiveFile.name ?: "Chapter"
+                val archiveUri = archiveFile.uri
+                val archiveUriString = archiveUri.toString()
+                val archiveSourceType = getComicSourceType(archiveName)
+                
+                val pageCount = when (archiveSourceType) {
+                    ComicSourceType.ZIP -> countImagesInZip(context, archiveUri)
+                    ComicSourceType.RAR -> countImagesInRar(context, archiveUri)
+                    ComicSourceType.PDF -> countPagesInPdf(context, archiveUri)
+                    else -> 0
+                }
+                if (pageCount > 0) {
+                    chapters.add(ComicChapter(
+                        name = archiveName.substringBeforeLast('.'),
+                        uriString = archiveUriString,
+                        sourceType = archiveSourceType
+                    ))
+                    totalPages += pageCount
+                }
+            }
+            // 从第一章获取封面
+            if (chapters.isNotEmpty()) {
+                val firstChapter = chapters.first()
+                val firstUri = firstChapter.uriString.toUri()
+                coverUri = when (firstChapter.sourceType) {
+                    ComicSourceType.ZIP -> getCoverFromZip(context, firstUri, totalItems = totalItems)
+                    ComicSourceType.RAR -> getCoverFromRar(context, firstUri, totalItems = totalItems)
+                    ComicSourceType.PDF -> getCoverFromPdf(context, firstUri, totalItems)
+                    else -> null
+                }
+            }
         } else {
+            // 直接图片作为"全一册"
             val images = subFiles.filter { it.isFile && it.type?.startsWith("image/") == true }
             if (images.isNotEmpty()) {
                 chapters.add(ComicChapter("全一册", level1File.uri.toString(), ComicSourceType.FOLDER))
