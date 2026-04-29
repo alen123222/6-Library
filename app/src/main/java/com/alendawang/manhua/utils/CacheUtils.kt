@@ -18,14 +18,26 @@ fun clearComicImageCache(context: Context, chapterUri: android.net.Uri, internal
             imagesDir.deleteRecursively()
         }
         
-        // 如果是 RAR，也删除压缩包副本
-        // 注意: getCachedArchiveFile 的哈希只使用 URI，不包含 internalPath
+        // 注意: getCachedArchiveFile / getOrCacheZipFile 的哈希只使用 URI，不包含 internalPath
         val archiveHash = java.security.MessageDigest.getInstance("MD5")
             .digest(chapterUri.toString().toByteArray())
             .joinToString("") { "%02x".format(it) }
+        
+        // 删除 RAR 压缩包副本 (archives/)
         val archiveFile = File(context.cacheDir, "archives/$archiveHash.rar")
         if (archiveFile.exists()) {
             archiveFile.delete()
+        }
+        
+        // 删除 ZIP 本地缓存副本 (zip_cache/) — 之前遗漏，导致缓存与原文件双倍占用空间
+        val zipCacheFile = File(context.cacheDir, "zip_cache/$archiveHash.zip")
+        if (zipCacheFile.exists()) {
+            zipCacheFile.delete()
+        }
+        // 同时清理可能残留的临时文件
+        val zipTmpFile = File(context.cacheDir, "zip_cache/$archiveHash.tmp")
+        if (zipTmpFile.exists()) {
+            zipTmpFile.delete()
         }
         
         // 注意: 保留封面图片 (在 comic_covers/ 目录)
@@ -34,7 +46,7 @@ fun clearComicImageCache(context: Context, chapterUri: android.net.Uri, internal
     }
 }
 
-// --- 清理所有漫画图片缓存 (应用启动时调用，保留封面) ---
+// --- 清理所有媒体缓存 (应用启动时调用，保留封面) ---
 fun clearAllComicImageCaches(context: Context) {
     try {
         // 删除所有漫画图片缓存 (PDF 渲染页等)
@@ -55,10 +67,16 @@ fun clearAllComicImageCaches(context: Context) {
             zipCacheDir.deleteRecursively()
         }
         
+        // 删除所有 EPUB 章节内嵌图片缓存
+        val epubImagesDir = File(context.cacheDir, "epub_images")
+        if (epubImagesDir.exists() && epubImagesDir.isDirectory) {
+            epubImagesDir.deleteRecursively()
+        }
+        
         // 清除 ZIP 编码检测缓存
         com.alendawang.manhua.utils.ZipCharsetCache.clear()
         
-        // 注意: 保留 comic_covers/ 目录中的封面
+        // 注意: 保留 comic_covers/ covers/ audio_covers/ 目录中的封面
     } catch (e: Exception) {
         e.printStackTrace()
     }
