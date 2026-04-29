@@ -82,6 +82,9 @@ dependencies {
     // 3. 其他第三方库：同样只声明一次
     implementation("io.coil-kt:coil-compose:2.6.0") // Coil图片加载库，直接写版本号，2.6.0是最新稳定版
     implementation("com.google.code.gson:gson:2.10.1")  // Gson JSON库
+    implementation("com.airbnb.android:lottie-compose:6.4.0") // Lottie 动效库
+    implementation("nl.dionsegijn:konfetti-compose:2.0.4") // Konfetti 撒花特效库
+    implementation("com.github.skydoves:orbital:0.3.4") // Orbital 共享元素动画库
     implementation("androidx.compose.material:material-icons-extended-android:1.6.8") // 最新的扩展图标库
     implementation("com.github.albfernandez:juniversalchardet:2.5.0") // 编码检测库
     implementation("com.github.junrar:junrar:7.5.5") {

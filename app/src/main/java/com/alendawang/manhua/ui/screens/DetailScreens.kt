@@ -39,6 +39,9 @@ import com.alendawang.manhua.utils.scrollToItemCentered
 import com.alendawang.manhua.R
 import com.alendawang.manhua.model.AppLanguage
 import com.alendawang.manhua.utils.AppStrings
+import com.skydoves.orbital.Orbital
+import com.skydoves.orbital.animateSharedElementTransition
+import androidx.compose.foundation.clickable
 
 // --- 漫画详情页 ---
 @Composable

@@ -18,6 +18,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.zIndex
+import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -70,7 +73,7 @@ fun collectContinueReadingItems(
     audios: List<AudioHistory>,
     recentAudioPlays: List<RecentAudioPlay>,
     isHiddenMode: Boolean,
-    maxPerType: Int = 3
+    maxPerType: Int = 4
 ): List<ContinueReadingItem> {
     val items = mutableListOf<ContinueReadingItem>()
 
@@ -223,15 +226,87 @@ fun ContinueReadingSection(
         ) {
             Column {
                 Spacer(Modifier.height(4.dp))
-                // 横向卡片列表
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(end = 8.dp)
-                ) {
-                    items(items, key = { it.id }) { item ->
-                        ContinueReadingCard(item = item, onClick = { onItemClick(item) })
+                // ★ 居中式无限循环轮播 ★
+                // 布局：[最旧(左)] [最新(正中央)] [次新(右)] — 首尾衔接，可无限滑动
+                val totalPages = items.size
+                // 用 Int.MAX_VALUE 虚拟页面实现首尾衔接（无限循环）
+                // 让初始页精确映射到 items[0]（最新）
+                val startPage = Int.MAX_VALUE / 2
+                val alignedStart = startPage - (startPage % totalPages)
+                val pagerState = androidx.compose.foundation.pager.rememberPagerState(
+                    initialPage = alignedStart,
+                    pageCount = { Int.MAX_VALUE }
+                )
+
+                // 使用 BoxWithConstraints 获取真实的可用宽度，避免父容器 Padding 导致横屏时可用宽度小于 0 从而闪退
+                BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                    // 动态计算 Padding，确保每个 Page 宽度精确为 130dp
+                    // 加上 coerceAtLeast(0.dp) 防止极端情况出错
+                    val horizontalPadding = ((maxWidth - 130.dp) / 2).coerceAtLeast(0.dp)
+
+                    androidx.compose.foundation.pager.HorizontalPager(
+                        state = pagerState,
+                        contentPadding = PaddingValues(horizontal = horizontalPadding),
+                        pageSpacing = 0.dp,
+                        beyondViewportPageCount = 3,
+                        // 增大惯性滚动的阻尼摩擦力，使得滑动速度降低、滚动段落缩短
+                        flingBehavior = androidx.compose.foundation.pager.PagerDefaults.flingBehavior(
+                            state = pagerState,
+                            pagerSnapDistance = androidx.compose.foundation.pager.PagerSnapDistance.atMost(Int.MAX_VALUE),
+                            // 使用 exponentialDecay 并把摩擦力系数设为 2.5f（默认是 1f），让手放开后停得更快
+                            decayAnimationSpec = androidx.compose.animation.core.exponentialDecay(
+                                frictionMultiplier = 1.25f
+                            ),
+                            snapAnimationSpec = androidx.compose.animation.core.spring(
+                                dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
+                                stiffness = androidx.compose.animation.core.Spring.StiffnessLow
+                            )
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) { rawPage ->
+                    val page = rawPage % totalPages
+                    val item = items[page]
+
+                    val pageOffset = ((pagerState.currentPage - rawPage).toFloat() +
+                        pagerState.currentPageOffsetFraction)
+                    // 不限制最大值的绝对偏移量，用于严格控制 Z 轴层级
+                    val rawAbsOffset = kotlin.math.abs(pageOffset)
+                    // 限制在 0~1 的偏移量，用于控制缩放
+                    val visualAbsOffset = rawAbsOffset.coerceIn(0f, 1f)
+
+                    // 调高了 scale，取消 alpha 淡化（始终为 1f）
+                    val scale = androidx.compose.ui.util.lerp(0.9f, 1f, 1f - visualAbsOffset)
+                    // 堆叠效果：侧边卡片向中心偏移，形成"压在当前卡片下"的视觉
+                    // pageOffset > 0 = 左边的卡 → 向右移；< 0 = 右边 → 向左移
+                    val density = androidx.compose.ui.platform.LocalDensity.current
+                    val stackShiftPx = with(density) { (pageOffset * 40f).dp.toPx() }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            // 将 zIndex 提至最外层 Box，控制整个 pager 页面的叠放顺序
+                            // 取消 coerceIn，保证不管离多远，越远 zIndex 严格越小！
+                            .zIndex(100f - rawAbsOffset),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        ContinueReadingCard(
+                            item = item,
+                            modifier = Modifier
+                                .width(130.dp)
+                                .graphicsLayer {
+                                    scaleX = scale
+                                    scaleY = scale
+                                    this.alpha = 1f // 取消淡化，保持完全清晰
+                                    // 侧边卡向中心收缩，造成叠压感
+                                    this.translationX = stackShiftPx
+                                },
+
+                            onClick = { onItemClick(item) }
+                        )
                     }
                 }
+                } // 结束 BoxWithConstraints
+
                 Spacer(Modifier.height(12.dp))
             }
         }
@@ -244,6 +319,7 @@ fun ContinueReadingSection(
 @Composable
 private fun ContinueReadingCard(
     item: ContinueReadingItem,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
     val context = LocalContext.current
@@ -286,8 +362,8 @@ private fun ContinueReadingCard(
     }
 
     Card(
-        modifier = Modifier
-            .width(130.dp)
+        modifier = modifier
+            .width(140.dp) // 放宽一点以适应轮播图
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale

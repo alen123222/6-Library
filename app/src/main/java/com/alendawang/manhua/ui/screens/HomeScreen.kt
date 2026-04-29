@@ -46,6 +46,15 @@ import com.alendawang.manhua.model.AppLanguage
 import com.alendawang.manhua.ui.components.*
 import com.alendawang.manhua.utils.AppStrings
 import kotlinx.coroutines.launch
+import com.airbnb.lottie.compose.*
+import java.util.Calendar
+import nl.dionsegijn.konfetti.compose.KonfettiView
+import nl.dionsegijn.konfetti.core.Party
+import nl.dionsegijn.konfetti.core.emitter.Emitter
+import nl.dionsegijn.konfetti.core.Position
+import nl.dionsegijn.konfetti.core.models.Size
+import androidx.compose.ui.graphics.graphicsLayer
+import java.util.concurrent.TimeUnit
 
 
 // Bouncing music note animation for playing indicator
@@ -67,6 +76,60 @@ fun BouncingMusicNote(modifier: Modifier = Modifier) {
         tint = MaterialTheme.colorScheme.primary,
         modifier = modifier.offset { IntOffset(0, offsetY.dp.roundToPx()) }.size(20.dp)
     )
+}
+
+@Composable
+fun DynamicGreetingHeader(
+    modifier: Modifier = Modifier,
+    onHeaderClick: () -> Unit = {}
+) {
+    val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+    val (greeting, lottieUrl, fallbackIcon) = when (hour) {
+        in 6..11 -> Triple("早上好，开启新的一天", "https://lottie.host/8e3a241e-b855-4e76-80db-3305a41be749/X8y1g6QJkV.json", Icons.Rounded.WbSunny) // Sun
+        in 12..17 -> Triple("下午好，享受悠闲时光", "https://lottie.host/8e3a241e-b855-4e76-80db-3305a41be749/X8y1g6QJkV.json", Icons.Rounded.WbCloudy) // Afternoon
+        in 18..22 -> Triple("晚上好，沉浸在故事中", "https://lottie.host/81a8b13d-5197-4b71-9f26-06830737190f/B85mR31y1D.json", Icons.Rounded.NightsStay) // Moon
+        else -> Triple("夜深了，注意休息哦", "https://lottie.host/81a8b13d-5197-4b71-9f26-06830737190f/B85mR31y1D.json", Icons.Rounded.NightsStay)
+    }
+
+    val composition by rememberLottieComposition(LottieCompositionSpec.Url(lottieUrl))
+    
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onHeaderClick() }
+            .padding(horizontal = 8.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = greeting,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Text(
+                text = "今天想看点什么？",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        
+        if (composition != null) {
+            LottieAnimation(
+                composition = composition,
+                iterations = LottieConstants.IterateForever,
+                modifier = Modifier.size(45.dp)
+            )
+        } else {
+            // Fallback icon
+            Icon(
+                fallbackIcon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(40.dp)
+            )
+        }
+    }
 }
 @Composable
 fun HomeScreen(
@@ -127,6 +190,9 @@ fun HomeScreen(
 
     // 检测是否横屏
     val isLandscapeMode = com.alendawang.manhua.utils.isLandscape()
+
+    // 庆祝撒花状态（已移至个人中心页，此处注释保留）
+    // var showKonfetti by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
         // 自定义背景 - 位于菜单栏下方，不会被遮挡
@@ -218,6 +284,12 @@ fun HomeScreen(
             Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
 
             Spacer(Modifier.height(10.dp))
+
+            // 动态欢迎头部 (Lottie) — 已移至个人中心，此处注释保留
+            // DynamicGreetingHeader(
+            //     onHeaderClick = { showKonfetti = true }
+            // )
+            // Spacer(Modifier.height(10.dp))
 
             // 媒体类型切换按钮
             Row(
@@ -499,20 +571,59 @@ fun HomeScreen(
 
         // 仅竖屏模式显示悬浮导入按钮
         if (!isLandscapeMode) {
-            // 悬浮导入按钮
-            FloatingActionButton(
+            // 呼吸动效
+            val infiniteTransition = rememberInfiniteTransition(label = "fabPulse")
+            val pulseScale by infiniteTransition.animateFloat(
+                initialValue = 1f,
+                targetValue = 1.05f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(1200, easing = FastOutSlowInEasing),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "fabScale"
+            )
+
+            // 悬浮导入按钮 (会呼吸的 Extended FAB)
+            ExtendedFloatingActionButton(
                 onClick = onBatchScanClick,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(24.dp)
-                    .navigationBarsPadding(), // 适配底部导航栏
+                    .navigationBarsPadding() // 适配底部导航栏
+                    .graphicsLayer {
+                        scaleX = pulseScale
+                        scaleY = pulseScale
+                    },
                 shape = RoundedCornerShape(16.dp), // 圆角带 R 角的小正方形
                 containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            ) {
-                Icon(Icons.Rounded.DriveFolderUpload, if (appLanguage == AppLanguage.CHINESE) "导入本地文件" else "Import Local Files")
-            }
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                text = { Text(if (appLanguage == AppLanguage.CHINESE) "导入本地文件" else "Import Local Files") },
+                icon = { Icon(Icons.Rounded.DriveFolderUpload, null) },
+                expanded = true
+            )
         }
+
+        // 撒花动效层（已移至个人中心，此处注释保留）
+        // if (showKonfetti) {
+        //     LaunchedEffect(Unit) {
+        //         kotlinx.coroutines.delay(2000)
+        //         showKonfetti = false
+        //     }
+        //     KonfettiView(
+        //         modifier = Modifier.fillMaxSize(),
+        //         parties = listOf(
+        //             Party(
+        //                 speed = 0f,
+        //                 maxSpeed = 30f,
+        //                 damping = 0.9f,
+        //                 spread = 360,
+        //                 colors = listOf(0xfce18a, 0xff726d, 0xf4306d, 0xb48def),
+        //                 emitter = Emitter(duration = 100, TimeUnit.MILLISECONDS).max(100),
+        //                 position = Position.Relative(0.5, 0.3)
+        //             )
+        //         )
+        //     )
+        // }
     }
 }
 
