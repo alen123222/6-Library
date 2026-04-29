@@ -218,6 +218,8 @@ fun ComicApp(
     var audioHistoryList by remember { mutableStateOf(applyAudioSort(loadAudioHistory(context), sortOption)) }
     var audioModuleDisplayMode by remember { mutableStateOf(loadDisplayModeForType(context, MediaType.AUDIO)) }
     var audioDisplayMode by remember { mutableStateOf(loadAudioDisplayMode(context)) }
+    // 最近播放的音频曲目记录（用于「继续阅读」，持久化存储，旋转屏幕不丢失）
+    var recentAudioPlays by remember { mutableStateOf(loadRecentAudioPlays(context)) }
     val playbackState by AudioPlaybackBus.state.collectAsState()
 
     fun updateNovelHistory(updated: List<NovelHistory>) {
@@ -1563,6 +1565,9 @@ fun ComicApp(
                         HomeScreen(
                                 paddingValues = paddingValues,
                                 historyList = displayedHistoryList,
+                                allComics = comicHistoryList,
+                                allNovels = novelHistoryList,
+                                allAudios = audioHistoryList,
                                 currentTheme = currentTheme,
                                 customBackgroundUri = customHomeBackgroundUri,
                                 customBackgroundAlpha = customHomeBackgroundAlpha,
@@ -1659,6 +1664,42 @@ fun ComicApp(
                                 playbackState.audioId?.let { audioId ->
                                     // 传入 -1 作为位置，表示不需要 seek，保持当前播放位置
                                     currentScreen = Screen.AudioPlayer(audioId, playbackState.trackIndex, -1L, showLyricsInitially = true)
+                                }
+                            },
+                            recentAudioPlays = recentAudioPlays,
+                            onContinueReadingClick = { item ->
+                                // 根据媒体类型导航到对应的阅读/播放页面
+                                when (item.mediaType) {
+                                    MediaType.COMIC -> {
+                                        item.comicHistory?.let { comic ->
+                                            currentScreen = Screen.ComicReader(
+                                                comic.id,
+                                                comic.lastReadChapterIndex,
+                                                comic.lastReadIndex
+                                            )
+                                        }
+                                    }
+                                    MediaType.NOVEL -> {
+                                        item.novelHistory?.let { novel ->
+                                            currentScreen = Screen.NovelReader(
+                                                novel.id,
+                                                novel.lastReadChapterIndex,
+                                                novel.lastReadScrollPosition
+                                            )
+                                        }
+                                    }
+                                    MediaType.AUDIO -> {
+                                        item.audioHistory?.let { audio ->
+                                            // 如果该音频的这首曲目正在播放/暂停中，传 -1L 保持当前位置
+                                            // 否则从头播放
+                                            val position = if (playbackState.audioId == audio.id && playbackState.trackIndex == item.trackIndex) -1L else 0L
+                                            currentScreen = Screen.AudioPlayer(
+                                                audio.id,
+                                                item.trackIndex,
+                                                position
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         )
@@ -1913,6 +1954,25 @@ fun ComicApp(
                         if (audio == null) {
                             LaunchedEffect(Unit) { currentScreen = Screen.Home }
                         } else {
+                            // 统一标记：进入播放器时标记为已播放，更新时间戳
+                            // 同时记录到 recentAudioPlays，支持同专辑多首歌在继续阅读中各自显示
+                            LaunchedEffect(audio.id, screen.trackIndex) {
+                                val now = System.currentTimeMillis()
+                                updateAudioItem(audio.id) {
+                                    it.copy(
+                                        timestamp = now,
+                                        lastPlayedIndex = screen.trackIndex,
+                                        lastPlayedPosition = 1L
+                                    )
+                                }
+                                // 添加最近播放记录（去重后保留最近10条），同步持久化
+                                val newPlay = RecentAudioPlay(audio.id, screen.trackIndex, now)
+                                val updated = (listOf(newPlay) + recentAudioPlays
+                                    .filter { !(it.audioId == audio.id && it.trackIndex == screen.trackIndex) })
+                                    .take(10)
+                                recentAudioPlays = updated
+                                saveRecentAudioPlays(context, updated)
+                            }
                             AudioPlayerScreen(
                                 paddingValues = paddingValues,
                                 audio = audio,

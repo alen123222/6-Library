@@ -1,5 +1,4 @@
 package com.alendawang.manhua.ui.screens
-
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -16,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.Alignment
@@ -47,6 +47,7 @@ import com.alendawang.manhua.ui.components.*
 import com.alendawang.manhua.utils.AppStrings
 import kotlinx.coroutines.launch
 
+
 // Bouncing music note animation for playing indicator
 @Composable
 fun BouncingMusicNote(modifier: Modifier = Modifier) {
@@ -67,11 +68,13 @@ fun BouncingMusicNote(modifier: Modifier = Modifier) {
         modifier = modifier.offset { IntOffset(0, offsetY.dp.roundToPx()) }.size(20.dp)
     )
 }
-
 @Composable
 fun HomeScreen(
     paddingValues: PaddingValues,
     historyList: List<MediaHistory>,
+    allComics: List<ComicHistory> = emptyList(),
+    allNovels: List<NovelHistory> = emptyList(),
+    allAudios: List<AudioHistory> = emptyList(),
     currentTheme: AppTheme,
     customBackgroundUri: String? = null,
     customBackgroundAlpha: Float = 0.4f,
@@ -96,7 +99,9 @@ fun HomeScreen(
     onAudioTrackClick: (AudioHistory, Int) -> Unit = { _, _ -> },
     onAudioTrackLongClick: (AudioHistory, Int) -> Unit = { _, _ -> },
     onToggleSelection: (String) -> Unit = {},
-    onNavigateToPlayer: () -> Unit = {}
+    onNavigateToPlayer: () -> Unit = {},
+    recentAudioPlays: List<RecentAudioPlay> = emptyList(),
+    onContinueReadingClick: (ContinueReadingItem) -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -154,7 +159,7 @@ fun HomeScreen(
                             onClick = { onMediaTypeChange(type) },
                             modifier = Modifier
                                 .width(100.dp)
-                                .height(48.dp),
+                                .height(38.dp),
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
@@ -200,14 +205,19 @@ fun HomeScreen(
                     onAudioTrackClick = onAudioTrackClick,
                     onAudioTrackLongClick = onAudioTrackLongClick,
                     onToggleSelection = onToggleSelection,
-                    onNavigateToPlayer = onNavigateToPlayer
+                    onNavigateToPlayer = onNavigateToPlayer,
+                    allComics = allComics,
+                    allNovels = allNovels,
+                    allAudios = allAudios,
+                    recentAudioPlays = recentAudioPlays,
+                    onContinueReadingClick = onContinueReadingClick
                 )
             }
         } else {
             // 竖屏模式：原有布局（媒体切换在顶部）
             Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(10.dp))
 
             // 媒体类型切换按钮
             Row(
@@ -220,7 +230,7 @@ fun HomeScreen(
                         onClick = { onMediaTypeChange(type) },
                         modifier = Modifier
                             .weight(1f)
-                            .height(48.dp),
+                            .height(38.dp),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
@@ -240,6 +250,18 @@ fun HomeScreen(
             }
 
             Spacer(Modifier.height(16.dp))
+
+        // 「继续阅读」可折叠栏 — 常驻，不随模块切换滑动
+        val continueReadingItems = remember(allComics, allNovels, allAudios, recentAudioPlays, isHiddenMode) {
+            collectContinueReadingItems(allComics, allNovels, allAudios, recentAudioPlays, isHiddenMode)
+        }
+        if (continueReadingItems.isNotEmpty() && searchQuery.isEmpty() && !isMultiSelectMode) {
+            ContinueReadingSection(
+                items = continueReadingItems,
+                appLanguage = appLanguage,
+                onItemClick = onContinueReadingClick
+            )
+        }
 
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -329,68 +351,78 @@ fun HomeScreen(
                     )
                 }
         ) {
-            // Show content based on currentMediaType
-            if (historyList.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(currentMediaType.icon, null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.surfaceVariant)
-                        Spacer(Modifier.height(16.dp))
-                        Text(
-                            if (isHiddenMode) {
-                                if (appLanguage == AppLanguage.CHINESE) "这里空空如也..." else "Nothing here..."
-                            } else {
-                                if (appLanguage == AppLanguage.CHINESE) "暂无内容，请点击下方按钮扫描" else "No content. Tap the button below to scan."
-                            },
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+            // AnimatedContent 模块切换滑动动画
+            AnimatedContent(
+                targetState = currentMediaType,
+                transitionSpec = {
+                    val direction = if (targetState.ordinal > initialState.ordinal) 1 else -1
+                    (slideInHorizontally { fullWidth -> direction * fullWidth } + fadeIn(tween(250)))
+                        .togetherWith(slideOutHorizontally { fullWidth -> -direction * fullWidth } + fadeOut(tween(200)))
+                },
+                label = "moduleSwitch"
+            ) { targetMediaType ->
+                if (historyList.isEmpty()) {
+                    // 空状态
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(targetMediaType.icon, null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.surfaceVariant)
+                            Spacer(Modifier.height(16.dp))
+                            Text(
+                                if (isHiddenMode) {
+                                    if (appLanguage == AppLanguage.CHINESE) "这里空空如也..." else "Nothing here..."
+                                } else {
+                                    if (appLanguage == AppLanguage.CHINESE) "暂无内容，请点击下方按钮扫描" else "No content. Tap the button below to scan."
+                                },
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
-                }
-            } else {
-                // Content for the current module
-                when (currentMediaType) {
-                    MediaType.COMIC -> {
-                        ComicTabContent(
-                            comicList = historyList.filterIsInstance<ComicHistory>(),
-                            currentTheme = currentTheme,
-                            displayMode = displayMode,
-                            cardAlpha = if (customBackgroundUri != null) customBackgroundAlpha.coerceAtMost(0.7f) else 1f,
-                            isMultiSelectMode = isMultiSelectMode,
-                            selectedItems = selectedItems,
-                            onHistoryItemClick = { onHistoryItemClick(it) },
-                            onHistoryItemLongClick = { onHistoryItemLongClick(it) }
-                        )
-                    }
-                    MediaType.NOVEL -> {
-                        NovelTabContent(
-                            novelList = historyList.filterIsInstance<NovelHistory>(),
-                            currentTheme = currentTheme,
-                            displayMode = displayMode,
-                            cardAlpha = if (customBackgroundUri != null) customBackgroundAlpha.coerceAtMost(0.7f) else 1f,
-                            isMultiSelectMode = isMultiSelectMode,
-                            selectedItems = selectedItems,
-                            onHistoryItemClick = { onHistoryItemClick(it) },
-                            onHistoryItemLongClick = { onHistoryItemLongClick(it) }
-                        )
-                    }
-                    MediaType.AUDIO -> {
-                        AudioTabContent(
-                            audioList = historyList.filterIsInstance<AudioHistory>(),
-                            currentTheme = currentTheme,
-                            displayMode = displayMode,
-                            audioDisplayMode = audioDisplayMode,
-                            cardAlpha = if (customBackgroundUri != null) customBackgroundAlpha.coerceAtMost(0.7f) else 1f,
-                            isMultiSelectMode = isMultiSelectMode,
-                            selectedItems = selectedItems,
-                            isAudioPlaying = isAudioPlaying,
-                            currentPlayingAudioId = currentPlayingAudioId,
-                            currentPlayingTrackIndex = currentPlayingTrackIndex,
-                            searchQuery = searchQuery,
-                            audioSearchMatchingTracks = audioSearchMatchingTracks,
-                            onHistoryItemClick = { onHistoryItemClick(it) },
-                            onHistoryItemLongClick = { onHistoryItemLongClick(it) },
-                            onAudioTrackClick = onAudioTrackClick,
-                            onAudioTrackLongClick = onAudioTrackLongClick
-                        )
+                } else {
+                    when (targetMediaType) {
+                        MediaType.COMIC -> {
+                            ComicTabContent(
+                                comicList = historyList.filterIsInstance<ComicHistory>(),
+                                currentTheme = currentTheme,
+                                displayMode = displayMode,
+                                cardAlpha = if (customBackgroundUri != null) customBackgroundAlpha.coerceAtMost(0.7f) else 1f,
+                                isMultiSelectMode = isMultiSelectMode,
+                                selectedItems = selectedItems,
+                                onHistoryItemClick = { onHistoryItemClick(it) },
+                                onHistoryItemLongClick = { onHistoryItemLongClick(it) }
+                            )
+                        }
+                        MediaType.NOVEL -> {
+                            NovelTabContent(
+                                novelList = historyList.filterIsInstance<NovelHistory>(),
+                                currentTheme = currentTheme,
+                                displayMode = displayMode,
+                                cardAlpha = if (customBackgroundUri != null) customBackgroundAlpha.coerceAtMost(0.7f) else 1f,
+                                isMultiSelectMode = isMultiSelectMode,
+                                selectedItems = selectedItems,
+                                onHistoryItemClick = { onHistoryItemClick(it) },
+                                onHistoryItemLongClick = { onHistoryItemLongClick(it) }
+                            )
+                        }
+                        MediaType.AUDIO -> {
+                            AudioTabContent(
+                                audioList = historyList.filterIsInstance<AudioHistory>(),
+                                currentTheme = currentTheme,
+                                displayMode = displayMode,
+                                audioDisplayMode = audioDisplayMode,
+                                cardAlpha = if (customBackgroundUri != null) customBackgroundAlpha.coerceAtMost(0.7f) else 1f,
+                                isMultiSelectMode = isMultiSelectMode,
+                                selectedItems = selectedItems,
+                                isAudioPlaying = isAudioPlaying,
+                                currentPlayingAudioId = currentPlayingAudioId,
+                                currentPlayingTrackIndex = currentPlayingTrackIndex,
+                                searchQuery = searchQuery,
+                                audioSearchMatchingTracks = audioSearchMatchingTracks,
+                                onHistoryItemClick = { onHistoryItemClick(it) },
+                                onHistoryItemLongClick = { onHistoryItemLongClick(it) },
+                                onAudioTrackClick = onAudioTrackClick,
+                                onAudioTrackLongClick = onAudioTrackLongClick
+                            )
+                        }
                     }
                 }
             }
@@ -515,7 +547,12 @@ fun RowScope.LandscapeContentArea(
     onAudioTrackClick: (AudioHistory, Int) -> Unit,
     onAudioTrackLongClick: (AudioHistory, Int) -> Unit,
     onToggleSelection: (String) -> Unit,
-    onNavigateToPlayer: () -> Unit
+    onNavigateToPlayer: () -> Unit,
+    allComics: List<ComicHistory> = emptyList(),
+    allNovels: List<NovelHistory> = emptyList(),
+    allAudios: List<AudioHistory> = emptyList(),
+    recentAudioPlays: List<RecentAudioPlay> = emptyList(),
+    onContinueReadingClick: (ContinueReadingItem) -> Unit = {}
 ) {
     Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
         Column(modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp)) {
@@ -574,71 +611,93 @@ fun RowScope.LandscapeContentArea(
                 }
             }
 
+            // 「继续阅读」可折叠栏 — 横屏也显示
+            val continueReadingItems = remember(allComics, allNovels, allAudios, recentAudioPlays, isHiddenMode) {
+                collectContinueReadingItems(allComics, allNovels, allAudios, recentAudioPlays, isHiddenMode)
+            }
+            if (continueReadingItems.isNotEmpty() && searchQuery.isEmpty() && !isMultiSelectMode) {
+                ContinueReadingSection(
+                    items = continueReadingItems,
+                    appLanguage = appLanguage,
+                    onItemClick = onContinueReadingClick
+                )
+            }
+
             Spacer(Modifier.height(8.dp))
 
-            // 内容区域
-            if (historyList.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(currentMediaType.icon, null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.surfaceVariant)
-                        Spacer(Modifier.height(16.dp))
-                        Text(
-                            if (isHiddenMode) {
-                                if (appLanguage == AppLanguage.CHINESE) "这里空空如也..." else "Nothing here..."
-                            } else {
-                                if (appLanguage == AppLanguage.CHINESE) "暂无内容，请点击下方按钮扫描" else "No content. Tap the button below to scan."
-                            },
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+            // AnimatedContent 模块切换滑动动画（横屏）
+            AnimatedContent(
+                targetState = currentMediaType,
+                transitionSpec = {
+                    val direction = if (targetState.ordinal > initialState.ordinal) 1 else -1
+                    (slideInHorizontally { fullWidth -> direction * fullWidth } + fadeIn(tween(250)))
+                        .togetherWith(slideOutHorizontally { fullWidth -> -direction * fullWidth } + fadeOut(tween(200)))
+                },
+                label = "landscapeModuleSwitch"
+            ) { targetMediaType ->
+                if (historyList.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(targetMediaType.icon, null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.surfaceVariant)
+                            Spacer(Modifier.height(16.dp))
+                            Text(
+                                if (isHiddenMode) {
+                                    if (appLanguage == AppLanguage.CHINESE) "这里空空如也..." else "Nothing here..."
+                                } else {
+                                    if (appLanguage == AppLanguage.CHINESE) "暂无内容，请点击下方按钮扫描" else "No content. Tap the button below to scan."
+                                },
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
-                }
-            } else {
-                val cardAlpha = if (customBackgroundUri != null) customBackgroundAlpha.coerceAtMost(0.7f) else 1f
-                
-                when (currentMediaType) {
-                    MediaType.COMIC -> {
-                        ComicTabContent(
-                            comicList = historyList.filterIsInstance<ComicHistory>(),
-                            currentTheme = currentTheme,
-                            displayMode = displayMode,
-                            cardAlpha = cardAlpha,
-                            isMultiSelectMode = isMultiSelectMode,
-                            selectedItems = selectedItems,
-                            onHistoryItemClick = { onHistoryItemClick(it) },
-                            onHistoryItemLongClick = { onHistoryItemLongClick(it) }
-                        )
-                    }
-                    MediaType.NOVEL -> {
-                        NovelTabContent(
-                            novelList = historyList.filterIsInstance<NovelHistory>(),
-                            currentTheme = currentTheme,
-                            displayMode = displayMode,
-                            cardAlpha = cardAlpha,
-                            isMultiSelectMode = isMultiSelectMode,
-                            selectedItems = selectedItems,
-                            onHistoryItemClick = { onHistoryItemClick(it) },
-                            onHistoryItemLongClick = { onHistoryItemLongClick(it) }
-                        )
-                    }
-                    MediaType.AUDIO -> {
-                        AudioTabContent(
-                            audioList = historyList.filterIsInstance<AudioHistory>(),
-                            currentTheme = currentTheme,
-                            displayMode = displayMode,
-                            audioDisplayMode = audioDisplayMode,
-                            cardAlpha = cardAlpha,
-                            isMultiSelectMode = isMultiSelectMode,
-                            selectedItems = selectedItems,
-                            isAudioPlaying = isAudioPlaying,
-                            currentPlayingAudioId = currentPlayingAudioId,
-                            currentPlayingTrackIndex = currentPlayingTrackIndex,
-                            searchQuery = searchQuery,
-                            audioSearchMatchingTracks = audioSearchMatchingTracks,
-                            onHistoryItemClick = { onHistoryItemClick(it) },
-                            onHistoryItemLongClick = { onHistoryItemLongClick(it) },
-                            onAudioTrackClick = onAudioTrackClick,
-                            onAudioTrackLongClick = onAudioTrackLongClick
-                        )
+                } else {
+                    val cardAlpha = if (customBackgroundUri != null) customBackgroundAlpha.coerceAtMost(0.7f) else 1f
+                    
+                    when (targetMediaType) {
+                        MediaType.COMIC -> {
+                            ComicTabContent(
+                                comicList = historyList.filterIsInstance<ComicHistory>(),
+                                currentTheme = currentTheme,
+                                displayMode = displayMode,
+                                cardAlpha = cardAlpha,
+                                isMultiSelectMode = isMultiSelectMode,
+                                selectedItems = selectedItems,
+                                onHistoryItemClick = { onHistoryItemClick(it) },
+                                onHistoryItemLongClick = { onHistoryItemLongClick(it) }
+                            )
+                        }
+                        MediaType.NOVEL -> {
+                            NovelTabContent(
+                                novelList = historyList.filterIsInstance<NovelHistory>(),
+                                currentTheme = currentTheme,
+                                displayMode = displayMode,
+                                cardAlpha = cardAlpha,
+                                isMultiSelectMode = isMultiSelectMode,
+                                selectedItems = selectedItems,
+                                onHistoryItemClick = { onHistoryItemClick(it) },
+                                onHistoryItemLongClick = { onHistoryItemLongClick(it) }
+                            )
+                        }
+                        MediaType.AUDIO -> {
+                            AudioTabContent(
+                                audioList = historyList.filterIsInstance<AudioHistory>(),
+                                currentTheme = currentTheme,
+                                displayMode = displayMode,
+                                audioDisplayMode = audioDisplayMode,
+                                cardAlpha = cardAlpha,
+                                isMultiSelectMode = isMultiSelectMode,
+                                selectedItems = selectedItems,
+                                isAudioPlaying = isAudioPlaying,
+                                currentPlayingAudioId = currentPlayingAudioId,
+                                currentPlayingTrackIndex = currentPlayingTrackIndex,
+                                searchQuery = searchQuery,
+                                audioSearchMatchingTracks = audioSearchMatchingTracks,
+                                onHistoryItemClick = { onHistoryItemClick(it) },
+                                onHistoryItemLongClick = { onHistoryItemLongClick(it) },
+                                onAudioTrackClick = onAudioTrackClick,
+                                onAudioTrackLongClick = onAudioTrackLongClick
+                            )
+                        }
                     }
                 }
             }

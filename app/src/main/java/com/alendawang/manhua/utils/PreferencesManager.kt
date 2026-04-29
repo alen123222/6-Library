@@ -3,6 +3,7 @@ package com.alendawang.manhua.utils
 import android.content.Context
 import androidx.core.content.edit
 import com.alendawang.manhua.model.*
+import com.alendawang.manhua.ui.components.RecentAudioPlay
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import java.text.Collator
@@ -299,6 +300,22 @@ fun loadAudioHistory(context: Context): List<AudioHistory> {
 
 fun saveAudioToPrefs(context: Context, list: List<AudioHistory>) {
     context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit { putString(KEY_AUDIO_HISTORY, Gson().toJson(list)) }
+}
+
+// --- 最近播放音频记录（用于「继续阅读」）---
+private const val KEY_RECENT_AUDIO_PLAYS = "recent_audio_plays"
+
+fun loadRecentAudioPlays(context: Context): List<RecentAudioPlay> {
+    val json = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        .getString(KEY_RECENT_AUDIO_PLAYS, null) ?: return emptyList()
+    return try {
+        Gson().fromJson(json, object : TypeToken<List<RecentAudioPlay>>() {}.type)
+    } catch (e: Exception) { emptyList() }
+}
+
+fun saveRecentAudioPlays(context: Context, list: List<RecentAudioPlay>) {
+    context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        .edit { putString(KEY_RECENT_AUDIO_PLAYS, Gson().toJson(list)) }
 }
 
 // --- 显示模式 ---
