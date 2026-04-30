@@ -495,21 +495,25 @@ fun SettingsSection(
 @Composable
 fun UserGuideSection(appLanguage: AppLanguage) {
     val guides = listOf(
-        Pair(
+        Triple(
             if (appLanguage == AppLanguage.CHINESE) "如何导入本地漫画/小说？" else "How to import local media?",
-            if (appLanguage == AppLanguage.CHINESE) "在主页对应的标签下（如漫画），点击左上角的菜单图标或顶部的操作栏，选择包含资源的文件夹，系统会自动扫描并加入库中。" else "Go to the corresponding tab, tap the menu/scan icon, and select a folder."
+            if (appLanguage == AppLanguage.CHINESE) "关于各类型媒体资源（尤其是漫画的各种结构）的推荐存放逻辑，请前往 GitHub 仓库阅读详细说明。" else "For detailed instructions and recommended folder structures, please visit our GitHub repository.",
+            "https://github.com/alen123222/6-Library"
         ),
-        Pair(
+        Triple(
             if (appLanguage == AppLanguage.CHINESE) "怎样进行多选和批量管理？" else "How to multi-select?",
-            if (appLanguage == AppLanguage.CHINESE) "在主页长按任意封面卡片即可进入多选模式。此时可以点击其他卡片进行勾选，通过底部栏图标可以进行批量删除等操作。" else "Long press any item to enter multi-select mode."
+            if (appLanguage == AppLanguage.CHINESE) "在主页点击顶部的多选图标即可进入多选模式。此时可以点击卡片进行勾选，通过顶部操作栏可以进行批量收藏、隐藏或删除等操作。" else "Click the multi-select icon at the top of the Home screen to enter multi-select mode. You can then select items and perform batch actions.",
+            null
         ),
-        Pair(
+        Triple(
             if (appLanguage == AppLanguage.CHINESE) "音频可以在后台播放吗？" else "Can audio play in background?",
-            if (appLanguage == AppLanguage.CHINESE) "可以。点击音频播放后，您可以直接切换应用或锁屏，音频会自动在后台继续播放，还可以通过系统通知栏控制播放进度和暂停。" else "Yes, start an audio and minimize the app."
+            if (appLanguage == AppLanguage.CHINESE) "可以。点击音频播放后，您可以直接切换应用或锁屏，音频会自动在后台继续播放，还可以通过系统通知栏控制播放进度和暂停。" else "Yes, start an audio and minimize the app.",
+            null
         ),
-        Pair(
+        Triple(
             if (appLanguage == AppLanguage.CHINESE) "如何快速切换媒体类型？" else "How to switch media types?",
-            if (appLanguage == AppLanguage.CHINESE) "在主页可以通过左右滑动屏幕（Swipe）来快速在漫画、小说、音频三大板块之间无缝切换。" else "Swipe left or right on the Home screen to quickly switch modules."
+            if (appLanguage == AppLanguage.CHINESE) "在主页可以通过左右滑动屏幕（Swipe）来快速在漫画、小说、音频三大板块之间无缝切换。" else "Swipe left or right on the Home screen to quickly switch modules.",
+            null
         )
     )
 
@@ -528,7 +532,7 @@ fun UserGuideSection(appLanguage: AppLanguage) {
             )
         }
         
-        guides.forEach { (title, desc) ->
+        guides.forEach { (title, desc, url) ->
             var expanded by remember { mutableStateOf(false) }
             Card(
                 modifier = Modifier
@@ -563,6 +567,18 @@ fun UserGuideSection(appLanguage: AppLanguage) {
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 lineHeight = 20.sp
                             )
+                            if (url != null) {
+                                Spacer(Modifier.height(8.dp))
+                                val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
+                                Text(
+                                    text = if (appLanguage == AppLanguage.CHINESE) "点此跳转" else "Click here",
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        color = MaterialTheme.colorScheme.primary,
+                                        textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline
+                                    ),
+                                    modifier = Modifier.clickable { uriHandler.openUri(url) }
+                                )
+                            }
                         }
                     }
                 }

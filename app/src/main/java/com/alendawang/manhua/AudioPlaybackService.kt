@@ -69,6 +69,17 @@ class AudioPlaybackService : Service() {
 
     private lateinit var mediaSession: MediaSessionCompat
 
+    private val noisyReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == android.media.AudioManager.ACTION_AUDIO_BECOMING_NOISY) {
+                if (player?.isPlaying == true) {
+                    pause()
+                }
+            }
+        }
+    }
+    private var isReceiverRegistered = false
+
     override fun onCreate() {
 
         super.onCreate()
@@ -82,6 +93,10 @@ class AudioPlaybackService : Service() {
         })
         mediaSession.isActive = true
         createNotificationChannel()
+        
+        val filter = android.content.IntentFilter(android.media.AudioManager.ACTION_AUDIO_BECOMING_NOISY)
+        registerReceiver(noisyReceiver, filter)
+        isReceiverRegistered = true
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -142,6 +157,14 @@ class AudioPlaybackService : Service() {
     }
 
     override fun onDestroy() {
+        if (isReceiverRegistered) {
+            try {
+                unregisterReceiver(noisyReceiver)
+            } catch (e: Exception) {
+                // Ignore unregister errors
+            }
+            isReceiverRegistered = false
+        }
         accumulateListenTime()
         updateJob?.cancel()
         player?.release()
