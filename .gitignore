@@ -36,3 +36,6 @@ google-services.json
 
 # AI Assistant & Skills
 .agent/
+codex-gcli-mcp/
+# Legado Source
+legado_source/
