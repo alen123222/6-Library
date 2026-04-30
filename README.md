@@ -172,14 +172,6 @@
 | **PdfRenderer** | Android 原生 PDF 页面渲染 |
 | **Gson** | JSON 序列化/反序列化（偏好存储） |
 
-## 📸 预览 | Screenshots
-
-| 阅读器 (Reader) | 播放器 (Player) |
-| :---: | :---: |
-| *(在此处添加阅读器截图)* | *(在此处添加播放器截图)* |
-| **设置 (Settings)** | **其他 (Others)** |
-| *(在此处添加设置页截图)* | *(在此处添加其他截图)* |
-
 ## 🤝 贡献 | Contribution
 
 欢迎提交 Issue 和 Pull Request！如果你有好的想法，请随时分享。
