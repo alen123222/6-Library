@@ -25,6 +25,7 @@ import com.alendawang.manhua.model.AudioHistory
 import com.alendawang.manhua.model.AudioTrack
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.alendawang.manhua.utils.addAudioListenTime
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -54,6 +55,7 @@ class AudioPlaybackService : Service() {
     private var player: MediaPlayer? = null
     private var isPrepared = false
     private var currentSpeed: Float = 1.0f
+    private var playSessionStartTime: Long = 0L // 开始播放时的时间戳
 
     private var audioId: String? = null
     private var audioName: String? = null
@@ -140,6 +142,7 @@ class AudioPlaybackService : Service() {
     }
 
     override fun onDestroy() {
+        accumulateListenTime()
         updateJob?.cancel()
         player?.release()
         player = null
@@ -226,6 +229,7 @@ class AudioPlaybackService : Service() {
             return
         }
         player?.start()
+        playSessionStartTime = System.currentTimeMillis()
         applyPlaybackSpeed()
         updateSnapshot(isPlayingOverride = true)
         startProgressUpdates()
@@ -251,6 +255,7 @@ class AudioPlaybackService : Service() {
 
     private fun pause() {
         restoreCachedSessionIfNeeded()
+        accumulateListenTime()
         player?.pause()
         updateSnapshot(isPlayingOverride = false)
         updateNotification()
@@ -272,11 +277,22 @@ class AudioPlaybackService : Service() {
 
     private fun skipTo(newIndex: Int) {
         restoreCachedSessionIfNeeded()
+        accumulateListenTime()
         if (trackUris.isEmpty()) return
         trackIndex = newIndex.coerceIn(0, trackUris.size - 1)
         autoPlay = true
         updateCachedTrackIndex()
         prepareTrack(0L)
+    }
+
+    private fun accumulateListenTime() {
+        if (playSessionStartTime > 0L) {
+            val elapsed = System.currentTimeMillis() - playSessionStartTime
+            playSessionStartTime = 0L
+            if (elapsed > 1000L) {
+                addAudioListenTime(this, elapsed)
+            }
+        }
     }
 
     private fun updateNotification() {

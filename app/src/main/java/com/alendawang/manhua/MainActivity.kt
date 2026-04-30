@@ -1015,31 +1015,53 @@ fun ComicApp(
                         // 正常模式的 TopAppBar
                         TopAppBar(
                             title = {
-                                Text(
-                                    text = when (currentScreen) {
-                                        is Screen.Home -> if (appLanguage == AppLanguage.CHINESE) "主页" else "Home"
-                                        is Screen.Landing -> if (appLanguage == AppLanguage.CHINESE) "使用指南" else "Guide"
-                                        is Screen.Details -> {
-                                            val detailScreen = currentScreen as Screen.Details
-                                            when (detailScreen.mediaType) {
-                                                MediaType.COMIC -> comicHistoryList.find { it.id == detailScreen.mediaId }?.name ?: AppStrings.details(appLanguage)
-                                                MediaType.NOVEL -> novelHistoryList.find { it.id == detailScreen.mediaId }?.name ?: AppStrings.details(appLanguage)
-                                                MediaType.AUDIO -> audioHistoryList.find { it.id == detailScreen.mediaId }?.name ?: AppStrings.details(appLanguage)
+                                if (currentScreen is Screen.Home || currentScreen is Screen.Landing) {
+                                    val isHome = currentScreen is Screen.Home
+                                    // 主页和控制面板共用这个胶囊按钮
+                                    Row(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(20.dp))
+                                            .background(MaterialTheme.colorScheme.primaryContainer)
+                                            .bouncyClickable { 
+                                                currentScreen = if (isHome) Screen.Landing else Screen.Home 
                                             }
-                                        }
-                                        is Screen.ComicReader -> if (appLanguage == AppLanguage.CHINESE) "阅读中" else "Reading"
-                                        is Screen.NovelReader -> if (appLanguage == AppLanguage.CHINESE) "阅读中" else "Reading"
-                                        is Screen.AudioPlayer -> if (appLanguage == AppLanguage.CHINESE) "播放中" else "Playing"
-                                    },
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
-                                    modifier = Modifier.clickable {
-                                        if (currentScreen is Screen.Home) {
-                                            currentScreen = Screen.Landing
-                                        }
+                                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            Icons.Rounded.SpaceDashboard,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(
+                                            text = if (appLanguage == AppLanguage.CHINESE) "控制面板" else "Dashboard",
+                                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
                                     }
-                                )
+                                } else {
+                                    Text(
+                                        text = when (currentScreen) {
+                                            is Screen.Details -> {
+                                                val detailScreen = currentScreen as Screen.Details
+                                                when (detailScreen.mediaType) {
+                                                    MediaType.COMIC -> comicHistoryList.find { it.id == detailScreen.mediaId }?.name ?: AppStrings.details(appLanguage)
+                                                    MediaType.NOVEL -> novelHistoryList.find { it.id == detailScreen.mediaId }?.name ?: AppStrings.details(appLanguage)
+                                                    MediaType.AUDIO -> audioHistoryList.find { it.id == detailScreen.mediaId }?.name ?: AppStrings.details(appLanguage)
+                                                }
+                                            }
+                                            is Screen.ComicReader -> if (appLanguage == AppLanguage.CHINESE) "阅读中" else "Reading"
+                                            is Screen.NovelReader -> if (appLanguage == AppLanguage.CHINESE) "阅读中" else "Reading"
+                                            is Screen.AudioPlayer -> if (appLanguage == AppLanguage.CHINESE) "播放中" else "Playing"
+                                            else -> ""
+                                        },
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
+                                    )
+                                }
                             },
                             colors = TopAppBarDefaults.topAppBarColors(
                                 containerColor = if (currentScreen is Screen.Details) Color.Transparent else MaterialTheme.colorScheme.background.copy(alpha = 0.95f),
@@ -1553,12 +1575,77 @@ fun ComicApp(
             Crossfade(targetState = currentScreen, label = "screen", animationSpec = tween(400)) { screen ->
                 when (screen) {
                     is Screen.Landing -> {
+                        // 计算缓存大小
+                        var cacheSizeMB by remember { mutableStateOf(0f) }
+                        var comicSizeMB by remember { mutableStateOf(0f) }
+                        var novelSizeMB by remember { mutableStateOf(0f) }
+                        var audioSizeMB by remember { mutableStateOf(0f) }
+                        var totalAudioTimeMs by remember { mutableStateOf(loadTotalAudioListenTime(context)) }
+                        val totalComicTimeMs = comicHistoryList.sumOf { it.totalReadTimeMs }
+                        
+                        LaunchedEffect(Unit) {
+                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                // 缓存大小：扫描整个 cacheDir（包括 Coil、Glide、WebView 等所有缓存）
+                                cacheSizeMB = context.cacheDir.walkTopDown().sumOf { if (it.isFile) it.length() else 0L } / (1024f * 1024f)
+                                
+                                // 漫画文件总大小
+                                comicSizeMB = comicHistoryList.sumOf { comic ->
+                                    try {
+                                        val uri = android.net.Uri.parse(comic.uriString)
+                                        val docFile = androidx.documentfile.provider.DocumentFile.fromTreeUri(context, uri)
+                                        docFile?.let { calculateDirSize(it, context) } ?: 0L
+                                    } catch (_: Exception) { 0L }
+                                } / (1024f * 1024f)
+
+                                // 小说文件总大小
+                                novelSizeMB = novelHistoryList.sumOf { novel ->
+                                    try {
+                                        val uri = android.net.Uri.parse(novel.uriString)
+                                        val docFile = androidx.documentfile.provider.DocumentFile.fromSingleUri(context, uri)
+                                        docFile?.length() ?: 0L
+                                    } catch (_: Exception) { 0L }
+                                } / (1024f * 1024f)
+
+                                // 音频文件总大小
+                                audioSizeMB = audioHistoryList.sumOf { audio ->
+                                    try {
+                                        val uri = android.net.Uri.parse(audio.uriString)
+                                        val docFile = androidx.documentfile.provider.DocumentFile.fromTreeUri(context, uri)
+                                        docFile?.let { calculateDirSize(it, context) } ?: 0L
+                                    } catch (_: Exception) { 0L }
+                                } / (1024f * 1024f)
+                                
+                                totalAudioTimeMs = loadTotalAudioListenTime(context)
+                            }
+                        }
+
                         LandingScreen(
                             paddingValues = paddingValues,
                             appLanguage = appLanguage,
                             customBackgroundUri = customHomeBackgroundUri,
                             customBackgroundAlpha = customHomeBackgroundAlpha,
-                            onShowHelp = { showHelpDialog = true }
+                            onShowHelp = { showHelpDialog = true },
+                            totalComicTimeMs = totalComicTimeMs,
+                            novelList = novelHistoryList,
+                            totalAudioTimeMs = totalAudioTimeMs,
+                            currentTheme = currentTheme,
+                            onThemeChange = {
+                                currentTheme = currentTheme.next()
+                                saveTheme(context, currentTheme)
+                            },
+                            onLanguageChange = {
+                                appLanguage = if (appLanguage == AppLanguage.CHINESE) AppLanguage.ENGLISH else AppLanguage.CHINESE
+                                saveAppLanguage(context, appLanguage)
+                            },
+                            onClearCache = {
+                                context.cacheDir.listFiles()?.forEach { it.deleteRecursively() }
+                                cacheSizeMB = 0f
+                                android.widget.Toast.makeText(context, if (appLanguage == AppLanguage.CHINESE) "缓存已清理" else "Cache cleared", android.widget.Toast.LENGTH_SHORT).show()
+                            },
+                            cacheSizeMB = cacheSizeMB,
+                            comicSizeMB = comicSizeMB,
+                            novelSizeMB = novelSizeMB,
+                            audioSizeMB = audioSizeMB
                         )
                     }
                     is Screen.Home -> {
@@ -1823,6 +1910,8 @@ fun ComicApp(
                                 }
                             }
 
+                            val comicSessionStart = remember { System.currentTimeMillis() }
+
                             DisposableEffect(Unit) {
                                 onDispose {
                                     val currentIndex = readerListState.firstVisibleItemIndex
@@ -1837,6 +1926,17 @@ fun ComicApp(
                                             currentIndex
                                         )?.let {
                                             comicHistoryList = applySort(it, sortOption)
+                                        }
+                                    }
+                                    // 累加漫画阅读时长
+                                    val elapsed = System.currentTimeMillis() - comicSessionStart
+                                    if (elapsed > 1000L) {
+                                        val idx = comicHistoryList.indexOfFirst { it.id == screen.comicId }
+                                        if (idx >= 0) {
+                                            val updated = comicHistoryList.toMutableList()
+                                            updated[idx] = updated[idx].copy(totalReadTimeMs = updated[idx].totalReadTimeMs + elapsed)
+                                            comicHistoryList = updated
+                                            saveComicToPrefs(context, comicHistoryList)
                                         }
                                     }
                                     // 清理漫画图片缓存 (所有类型)
@@ -1944,6 +2044,11 @@ fun ComicApp(
                                             chapters = chapters,
                                             lastReadChapterIndex = safeIndex
                                         )
+                                    }
+                                },
+                                onReadTimeUpdate = { elapsedMs ->
+                                    updateNovelItem(novel.id) {
+                                        it.copy(totalReadTimeMs = it.totalReadTimeMs + elapsedMs)
                                     }
                                 }
                             )

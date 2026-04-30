@@ -191,3 +191,18 @@ fun estimateIndexFromLegacyPx(
     val targetOffset = (legacyPx - (targetIndex * avgHeight)).coerceAtLeast(0)
     return targetIndex to targetOffset
 }
+
+// --- 计算 DocumentFile 目录大小 ---
+fun calculateDirSize(docFile: androidx.documentfile.provider.DocumentFile, context: Context): Long {
+    var total = 0L
+    try {
+        if (docFile.isDirectory) {
+            docFile.listFiles().forEach { child ->
+                total += if (child.isDirectory) calculateDirSize(child, context) else (child.length())
+            }
+        } else {
+            total = docFile.length()
+        }
+    } catch (_: Exception) {}
+    return total
+}

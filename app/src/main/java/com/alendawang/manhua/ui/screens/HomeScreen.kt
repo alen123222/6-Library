@@ -46,15 +46,9 @@ import com.alendawang.manhua.model.AppLanguage
 import com.alendawang.manhua.ui.components.*
 import com.alendawang.manhua.utils.AppStrings
 import kotlinx.coroutines.launch
-import com.airbnb.lottie.compose.*
 import java.util.Calendar
-import nl.dionsegijn.konfetti.compose.KonfettiView
-import nl.dionsegijn.konfetti.core.Party
-import nl.dionsegijn.konfetti.core.emitter.Emitter
-import nl.dionsegijn.konfetti.core.Position
-import nl.dionsegijn.konfetti.core.models.Size
 import androidx.compose.ui.graphics.graphicsLayer
-import java.util.concurrent.TimeUnit
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 
 
 // Bouncing music note animation for playing indicator
@@ -78,59 +72,7 @@ fun BouncingMusicNote(modifier: Modifier = Modifier) {
     )
 }
 
-@Composable
-fun DynamicGreetingHeader(
-    modifier: Modifier = Modifier,
-    onHeaderClick: () -> Unit = {}
-) {
-    val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
-    val (greeting, lottieUrl, fallbackIcon) = when (hour) {
-        in 6..11 -> Triple("早上好，开启新的一天", "https://lottie.host/8e3a241e-b855-4e76-80db-3305a41be749/X8y1g6QJkV.json", Icons.Rounded.WbSunny) // Sun
-        in 12..17 -> Triple("下午好，享受悠闲时光", "https://lottie.host/8e3a241e-b855-4e76-80db-3305a41be749/X8y1g6QJkV.json", Icons.Rounded.WbCloudy) // Afternoon
-        in 18..22 -> Triple("晚上好，沉浸在故事中", "https://lottie.host/81a8b13d-5197-4b71-9f26-06830737190f/B85mR31y1D.json", Icons.Rounded.NightsStay) // Moon
-        else -> Triple("夜深了，注意休息哦", "https://lottie.host/81a8b13d-5197-4b71-9f26-06830737190f/B85mR31y1D.json", Icons.Rounded.NightsStay)
-    }
 
-    val composition by rememberLottieComposition(LottieCompositionSpec.Url(lottieUrl))
-    
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable { onHeaderClick() }
-            .padding(horizontal = 8.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = greeting,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            Text(
-                text = "今天想看点什么？",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        
-        if (composition != null) {
-            LottieAnimation(
-                composition = composition,
-                iterations = LottieConstants.IterateForever,
-                modifier = Modifier.size(45.dp)
-            )
-        } else {
-            // Fallback icon
-            Icon(
-                fallbackIcon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(40.dp)
-            )
-        }
-    }
-}
 @Composable
 fun HomeScreen(
     paddingValues: PaddingValues,
@@ -191,8 +133,7 @@ fun HomeScreen(
     // 检测是否横屏
     val isLandscapeMode = com.alendawang.manhua.utils.isLandscape()
 
-    // 庆祝撒花状态（已移至个人中心页，此处注释保留）
-    // var showKonfetti by remember { mutableStateOf(false) }
+
 
     Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
         // 自定义背景 - 位于菜单栏下方，不会被遮挡
@@ -221,11 +162,20 @@ fun HomeScreen(
                 ) {
                     MediaType.values().forEach { type ->
                         val isSelected = type == currentMediaType
+                        val interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                        val isPressed by interactionSource.collectIsPressedAsState()
+                        val btnScale by animateFloatAsState(
+                            targetValue = if (isPressed) 0.92f else 1f,
+                            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+                            label = "mediaBtnScale"
+                        )
                         Button(
                             onClick = { onMediaTypeChange(type) },
+                            interactionSource = interactionSource,
                             modifier = Modifier
                                 .width(100.dp)
-                                .height(38.dp),
+                                .height(38.dp)
+                                .graphicsLayer { scaleX = btnScale; scaleY = btnScale },
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
@@ -285,11 +235,6 @@ fun HomeScreen(
 
             Spacer(Modifier.height(10.dp))
 
-            // 动态欢迎头部 (Lottie) — 已移至个人中心，此处注释保留
-            // DynamicGreetingHeader(
-            //     onHeaderClick = { showKonfetti = true }
-            // )
-            // Spacer(Modifier.height(10.dp))
 
             // 媒体类型切换按钮
             Row(
@@ -298,11 +243,20 @@ fun HomeScreen(
             ) {
                 MediaType.values().forEach { type ->
                     val isSelected = type == currentMediaType
+                    val interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                    val isPressed by interactionSource.collectIsPressedAsState()
+                    val btnScale by animateFloatAsState(
+                        targetValue = if (isPressed) 0.92f else 1f,
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+                        label = "mediaBtnScale"
+                    )
                     Button(
                         onClick = { onMediaTypeChange(type) },
+                        interactionSource = interactionSource,
                         modifier = Modifier
                             .weight(1f)
-                            .height(38.dp),
+                            .height(38.dp)
+                            .graphicsLayer { scaleX = btnScale; scaleY = btnScale },
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,

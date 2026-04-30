@@ -79,7 +79,8 @@ fun NovelReaderScreen(
     onToggleBars: () -> Unit,
     isBarsVisible: Boolean,
     onProgressSave: (Int, Int) -> Unit,
-    onChaptersUpdate: (List<NovelChapter>, Int) -> Unit
+    onChaptersUpdate: (List<NovelChapter>, Int) -> Unit,
+    onReadTimeUpdate: (Long) -> Unit = {} // 退出时回传本次阅读毫秒数
 ) {
     val context = LocalContext.current
     val view = androidx.compose.ui.platform.LocalView.current
@@ -273,6 +274,7 @@ fun NovelReaderScreen(
 
     DisposableEffect(Unit) {
         onDispose {
+            // 保存阅读进度
             val chapterStart = chapterStarts.firstOrNull { it.first == currentChapterIndex }?.second ?: 0
             val relativeIndex = (listState.firstVisibleItemIndex - chapterStart).coerceAtLeast(0)
             val packed = packScrollProgress(
@@ -280,6 +282,11 @@ fun NovelReaderScreen(
                 listState.firstVisibleItemScrollOffset
             )
             onProgressSave(currentChapterIndex, packed)
+            // 累加本次阅读时长
+            val elapsed = System.currentTimeMillis() - sessionStartTime
+            if (elapsed > 1000L) { // 至少 1 秒才算有效
+                onReadTimeUpdate(elapsed)
+            }
         }
     }
 

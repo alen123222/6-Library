@@ -439,7 +439,7 @@ private fun ContinueReadingCard(
             }
 
             // 底部信息区
-            Column(modifier = Modifier.padding(8.dp)) {
+            Column(modifier = Modifier.padding(8.dp).defaultMinSize(minHeight = 48.dp)) {
                 Text(
                     text = item.name,
                     maxLines = 1,

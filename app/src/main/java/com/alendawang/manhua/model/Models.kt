@@ -45,7 +45,8 @@ data class ComicHistory(
     val cachedTotalPages: Int = 0,
     val cachedCurrentPage: Int = 0,
     // 增量扫描：记录最后扫描时间戳
-    val lastScannedAt: Long = 0
+    val lastScannedAt: Long = 0,
+    val totalReadTimeMs: Long = 0 // 累计阅读时长（毫秒）
 ) : MediaHistory
 
 // --- 小说数据模型 ---
@@ -70,7 +71,8 @@ data class NovelHistory(
     val lastReadChapterIndex: Int = 0,
     val lastReadScrollPosition: Int = 0,
     override val isFavorite: Boolean = false,
-    override val isNsfw: Boolean = false
+    override val isNsfw: Boolean = false,
+    val totalReadTimeMs: Long = 0 // 累计阅读时长（毫秒）
 ) : MediaHistory
 
 // --- 音频数据模型 ---

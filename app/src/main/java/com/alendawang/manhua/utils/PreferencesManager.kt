@@ -562,3 +562,21 @@ fun loadComicReadMode(context: Context): ComicReadMode {
 fun saveComicReadMode(context: Context, mode: ComicReadMode) {
     context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit { putString(KEY_COMIC_READ_MODE, mode.name) }
 }
+
+// --- 音频总听歌时长 ---
+private const val KEY_TOTAL_AUDIO_LISTEN_TIME = "total_audio_listen_time_ms"
+
+fun loadTotalAudioListenTime(context: Context): Long {
+    return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        .getLong(KEY_TOTAL_AUDIO_LISTEN_TIME, 0L)
+}
+
+fun saveTotalAudioListenTime(context: Context, timeMs: Long) {
+    context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        .edit { putLong(KEY_TOTAL_AUDIO_LISTEN_TIME, timeMs) }
+}
+
+fun addAudioListenTime(context: Context, elapsedMs: Long) {
+    val current = loadTotalAudioListenTime(context)
+    saveTotalAudioListenTime(context, current + elapsedMs)
+}
