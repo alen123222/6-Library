@@ -23,6 +23,8 @@ private const val KEY_PASSWORD = "app_nsfw_password"
 private const val KEY_DETAIL_OVERLAY_ALPHA = "detail_overlay_alpha"
 private const val KEY_HOME_BACKGROUND = "home_background_uri"
 private const val KEY_HOME_BACKGROUND_ALPHA = "home_background_alpha"
+private const val KEY_SHOW_CONTINUE_READING = "show_continue_reading"
+private const val KEY_CLEAR_CONTINUE_READING_TIMESTAMP = "clear_continue_reading_timestamp"
 private const val KEY_LAST_MEDIA_TYPE = "last_media_type"
 private const val KEY_APP_LANGUAGE = "app_language"
 private const val KEY_LANGUAGE_INITIALIZED = "language_initialized"
@@ -436,6 +438,23 @@ fun loadHomeBackgroundAlpha(context: Context): Float {
 
 fun saveHomeBackgroundAlpha(context: Context, alpha: Float) {
     context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit { putFloat(KEY_HOME_BACKGROUND_ALPHA, alpha) }
+}
+
+// --- 继续阅读模块开关 ---
+fun loadShowContinueReading(context: Context): Boolean {
+    return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).getBoolean(KEY_SHOW_CONTINUE_READING, true)
+}
+
+fun saveShowContinueReading(context: Context, show: Boolean) {
+    context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit { putBoolean(KEY_SHOW_CONTINUE_READING, show) }
+}
+
+fun loadClearContinueReadingTimestamp(context: Context): Long {
+    return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).getLong(KEY_CLEAR_CONTINUE_READING_TIMESTAMP, 0L)
+}
+
+fun saveClearContinueReadingTimestamp(context: Context, timestamp: Long) {
+    context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit { putLong(KEY_CLEAR_CONTINUE_READING_TIMESTAMP, timestamp) }
 }
 
 // --- 密码管理 ---

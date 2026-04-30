@@ -73,12 +73,14 @@ fun collectContinueReadingItems(
     audios: List<AudioHistory>,
     recentAudioPlays: List<RecentAudioPlay>,
     isHiddenMode: Boolean,
+    clearContinueReadingTimestamp: Long = 0L,
     maxPerType: Int = 4
 ): List<ContinueReadingItem> {
     val items = mutableListOf<ContinueReadingItem>()
 
     // 漫画：有进度且未读完，每类最多 maxPerType 个（按最近阅读排序）
     comics.filter { comic ->
+        comic.timestamp >= clearContinueReadingTimestamp &&
         (isHiddenMode || !comic.isNsfw) &&
         comic.cachedTotalPages > 0 &&
         comic.cachedCurrentPage > 0 &&
@@ -101,6 +103,7 @@ fun collectContinueReadingItems(
 
     // 小说：有进度且未读完，每类最多 maxPerType 个
     novels.filter { novel ->
+        novel.timestamp >= clearContinueReadingTimestamp &&
         (isHiddenMode || !novel.isNsfw) &&
         novel.chapters.isNotEmpty() &&
         novel.lastReadChapterIndex > 0 &&
@@ -125,6 +128,7 @@ fun collectContinueReadingItems(
     // 每条记录对应一首具体曲目，按播放时间倒序取前 maxPerType 个
     val audioMap = audios.associateBy { it.id }
     recentAudioPlays
+        .filter { it.timestamp >= clearContinueReadingTimestamp }
         .sortedByDescending { it.timestamp }
         .distinctBy { "${it.audioId}_${it.trackIndex}" } // 去重：同一曲目只保留最新的
         .take(maxPerType)

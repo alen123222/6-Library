@@ -255,7 +255,7 @@ fun formatTimeMs(ms: Long): String {
 fun formatTimeShort(ms: Long): String {
     val hours = ms / 3600000
     val minutes = (ms % 3600000) / 60000
-    return if (hours > 0) "${hours}h" else "${minutes}m"
+    return if (hours > 0) "${hours}h ${minutes}m" else "${minutes}m"
 }
 
 @Composable
@@ -400,14 +400,17 @@ fun SettingsRow(
     }
 }
 
+
 @Composable
 fun SettingsSection(
     appLanguage: AppLanguage,
     currentTheme: com.alendawang.manhua.model.AppTheme,
     cacheSizeMB: Float,
+    showContinueReading: Boolean,
     onThemeChange: () -> Unit,
     onLanguageChange: () -> Unit,
-    onClearCache: () -> Unit
+    onClearCache: () -> Unit,
+    onToggleContinueReading: (Boolean) -> Unit
 ) {
     var showClearDialog by remember { mutableStateOf(false) }
 
@@ -448,6 +451,14 @@ fun SettingsSection(
                     value = if (appLanguage == AppLanguage.CHINESE) "中文" else "English",
                     iconTint = MaterialTheme.colorScheme.secondary,
                     onClick = onLanguageChange
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f), modifier = Modifier.padding(horizontal = 20.dp))
+                SettingsRow(
+                    icon = Icons.Rounded.MenuBook,
+                    title = if (appLanguage == AppLanguage.CHINESE) "主页继续阅读模块" else "Home Continue Reading",
+                    value = if (showContinueReading) (if (appLanguage == AppLanguage.CHINESE) "开启" else "On") else (if (appLanguage == AppLanguage.CHINESE) "关闭" else "Off"),
+                    iconTint = MaterialTheme.colorScheme.tertiary,
+                    onClick = { onToggleContinueReading(!showContinueReading) }
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f), modifier = Modifier.padding(horizontal = 20.dp))
                 SettingsRow(
@@ -577,6 +588,8 @@ fun LandingScreen(
     onLanguageChange: () -> Unit = {},
     onClearCache: () -> Unit = {},
     cacheSizeMB: Float = 0f,
+    showContinueReading: Boolean = true,
+    onToggleContinueReading: (Boolean) -> Unit = {},
     // --- 存储空间 ---
     comicSizeMB: Float = 0f,
     novelSizeMB: Float = 0f,
@@ -630,7 +643,7 @@ fun LandingScreen(
                     verticalArrangement = Arrangement.spacedBy(24.dp),
                     contentPadding = PaddingValues(top = 24.dp, bottom = 40.dp)
                 ) {
-                    item { SettingsSection(appLanguage = appLanguage, currentTheme = currentTheme, cacheSizeMB = cacheSizeMB, onThemeChange = onThemeChange, onLanguageChange = onLanguageChange, onClearCache = onClearCache) }
+                    item { SettingsSection(appLanguage = appLanguage, currentTheme = currentTheme, cacheSizeMB = cacheSizeMB, showContinueReading = showContinueReading, onThemeChange = onThemeChange, onLanguageChange = onLanguageChange, onClearCache = onClearCache, onToggleContinueReading = onToggleContinueReading) }
                     item { StorageSection(appLanguage = appLanguage, comicSizeMB = comicSizeMB, novelSizeMB = novelSizeMB, audioSizeMB = audioSizeMB) }
                     item { UserGuideSection(appLanguage = appLanguage) }
                 }
@@ -648,7 +661,7 @@ fun LandingScreen(
                 item { WelcomeBanner(appLanguage) }
                 item { FeatureCardsRow(appLanguage, totalComicTimeMs, novelList, totalAudioTimeMs) }
                 item { Spacer(Modifier.height(4.dp)) }
-                item { SettingsSection(appLanguage = appLanguage, currentTheme = currentTheme, cacheSizeMB = cacheSizeMB, onThemeChange = onThemeChange, onLanguageChange = onLanguageChange, onClearCache = onClearCache) }
+                item { SettingsSection(appLanguage = appLanguage, currentTheme = currentTheme, cacheSizeMB = cacheSizeMB, showContinueReading = showContinueReading, onThemeChange = onThemeChange, onLanguageChange = onLanguageChange, onClearCache = onClearCache, onToggleContinueReading = onToggleContinueReading) }
                 item { StorageSection(appLanguage = appLanguage, comicSizeMB = comicSizeMB, novelSizeMB = novelSizeMB, audioSizeMB = audioSizeMB) }
                 item { Spacer(Modifier.height(4.dp)) }
                 item { UserGuideSection(appLanguage = appLanguage) }

@@ -90,11 +90,13 @@ fun HomeScreen(
     isMultiSelectMode: Boolean = false,
     selectedItems: Set<String> = emptySet(),
     appLanguage: AppLanguage = AppLanguage.CHINESE,
+    clearContinueReadingTimestamp: Long = 0L,
     isAudioPlaying: Boolean = false,
     currentPlayingAudioId: String? = null,
     currentPlayingTrackIndex: Int = 0,
     searchQuery: String = "",
     audioSearchMatchingTracks: Map<String, List<Int>> = emptyMap(),
+    showContinueReading: Boolean = true,
     onMediaTypeChange: (MediaType) -> Unit,
     onAudioDisplayModeChange: (AudioDisplayMode) -> Unit = {},
     onBatchScanClick: () -> Unit,
@@ -208,11 +210,13 @@ fun HomeScreen(
                     isMultiSelectMode = isMultiSelectMode,
                     selectedItems = selectedItems,
                     appLanguage = appLanguage,
+                    clearContinueReadingTimestamp = clearContinueReadingTimestamp,
                     isAudioPlaying = isAudioPlaying,
                     currentPlayingAudioId = currentPlayingAudioId,
                     currentPlayingTrackIndex = currentPlayingTrackIndex,
                     searchQuery = searchQuery,
                     audioSearchMatchingTracks = audioSearchMatchingTracks,
+                    showContinueReading = showContinueReading,
                     onAudioDisplayModeChange = onAudioDisplayModeChange,
                     onBatchScanClick = onBatchScanClick,
                     onToggleMultiSelectMode = onToggleMultiSelectMode,
@@ -278,10 +282,10 @@ fun HomeScreen(
             Spacer(Modifier.height(16.dp))
 
         // 「继续阅读」可折叠栏 — 常驻，不随模块切换滑动
-        val continueReadingItems = remember(allComics, allNovels, allAudios, recentAudioPlays, isHiddenMode) {
-            collectContinueReadingItems(allComics, allNovels, allAudios, recentAudioPlays, isHiddenMode)
+        val continueReadingItems = remember(allComics, allNovels, allAudios, recentAudioPlays, isHiddenMode, clearContinueReadingTimestamp) {
+            collectContinueReadingItems(allComics, allNovels, allAudios, recentAudioPlays, isHiddenMode, clearContinueReadingTimestamp)
         }
-        if (continueReadingItems.isNotEmpty() && searchQuery.isEmpty() && !isMultiSelectMode) {
+        if (showContinueReading && continueReadingItems.isNotEmpty() && searchQuery.isEmpty() && !isMultiSelectMode) {
             ContinueReadingSection(
                 items = continueReadingItems,
                 appLanguage = appLanguage,
@@ -537,8 +541,8 @@ fun HomeScreen(
                 label = "fabScale"
             )
 
-            // 悬浮导入按钮 (会呼吸的 Extended FAB)
-            ExtendedFloatingActionButton(
+            // 悬浮导入按钮 (会呼吸的 FAB)
+            FloatingActionButton(
                 onClick = onBatchScanClick,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
@@ -550,11 +554,10 @@ fun HomeScreen(
                     },
                 shape = RoundedCornerShape(16.dp), // 圆角带 R 角的小正方形
                 containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-                text = { Text(if (appLanguage == AppLanguage.CHINESE) "导入本地文件" else "Import Local Files") },
-                icon = { Icon(Icons.Rounded.DriveFolderUpload, null) },
-                expanded = true
-            )
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            ) {
+                Icon(Icons.Rounded.DriveFolderUpload, null)
+            }
         }
 
         // 撒花动效层（已移至个人中心，此处注释保留）
@@ -599,11 +602,13 @@ fun RowScope.LandscapeContentArea(
     isMultiSelectMode: Boolean,
     selectedItems: Set<String>,
     appLanguage: AppLanguage,
+    clearContinueReadingTimestamp: Long,
     isAudioPlaying: Boolean,
     currentPlayingAudioId: String?,
     currentPlayingTrackIndex: Int,
     searchQuery: String,
     audioSearchMatchingTracks: Map<String, List<Int>>,
+    showContinueReading: Boolean,
     onAudioDisplayModeChange: (AudioDisplayMode) -> Unit,
     onBatchScanClick: () -> Unit,
     onToggleMultiSelectMode: () -> Unit,
@@ -677,10 +682,10 @@ fun RowScope.LandscapeContentArea(
             }
 
             // 「继续阅读」可折叠栏 — 横屏也显示
-            val continueReadingItems = remember(allComics, allNovels, allAudios, recentAudioPlays, isHiddenMode) {
-                collectContinueReadingItems(allComics, allNovels, allAudios, recentAudioPlays, isHiddenMode)
+            val continueReadingItems = remember(allComics, allNovels, allAudios, recentAudioPlays, isHiddenMode, clearContinueReadingTimestamp) {
+                collectContinueReadingItems(allComics, allNovels, allAudios, recentAudioPlays, isHiddenMode, clearContinueReadingTimestamp)
             }
-            if (continueReadingItems.isNotEmpty() && searchQuery.isEmpty() && !isMultiSelectMode) {
+            if (showContinueReading && continueReadingItems.isNotEmpty() && searchQuery.isEmpty() && !isMultiSelectMode) {
                 ContinueReadingSection(
                     items = continueReadingItems,
                     appLanguage = appLanguage,
@@ -768,13 +773,27 @@ fun RowScope.LandscapeContentArea(
             }
         }
 
+        val infiniteTransitionLandscape = rememberInfiniteTransition(label = "fabPulseLandscape")
+        val pulseScaleLandscape by infiniteTransitionLandscape.animateFloat(
+            initialValue = 1f,
+            targetValue = 1.05f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(1200, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "fabScaleLandscape"
+        )
         // 悬浮扫描按钮 (仅在右侧内容区域内显示)
         FloatingActionButton(
             onClick = onBatchScanClick,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(16.dp)
-                .navigationBarsPadding(),
+                .navigationBarsPadding()
+                .graphicsLayer {
+                    scaleX = pulseScaleLandscape
+                    scaleY = pulseScaleLandscape
+                },
             shape = RoundedCornerShape(16.dp),
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary

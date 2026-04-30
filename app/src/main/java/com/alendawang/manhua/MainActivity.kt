@@ -204,6 +204,8 @@ fun ComicApp(
     
     // 应用语言状态 - 首次启动自动跟随系统语言
     var appLanguage by remember { mutableStateOf(loadAppLanguage(context)) }
+    var showContinueReading by remember { mutableStateOf(loadShowContinueReading(context)) }
+    var clearContinueReadingTimestamp by remember { mutableStateOf(loadClearContinueReadingTimestamp(context)) }
 
     // 漫画状态
     var sortOption by remember { mutableStateOf(loadSortOption(context)) }
@@ -1629,6 +1631,7 @@ fun ComicApp(
                             novelList = novelHistoryList,
                             totalAudioTimeMs = totalAudioTimeMs,
                             currentTheme = currentTheme,
+                            showContinueReading = showContinueReading,
                             onThemeChange = {
                                 currentTheme = currentTheme.next()
                                 saveTheme(context, currentTheme)
@@ -1641,6 +1644,15 @@ fun ComicApp(
                                 context.cacheDir.listFiles()?.forEach { it.deleteRecursively() }
                                 cacheSizeMB = 0f
                                 android.widget.Toast.makeText(context, if (appLanguage == AppLanguage.CHINESE) "缓存已清理" else "Cache cleared", android.widget.Toast.LENGTH_SHORT).show()
+                            },
+                            onToggleContinueReading = { show ->
+                                showContinueReading = show
+                                saveShowContinueReading(context, show)
+                                if (!show) {
+                                    val now = System.currentTimeMillis()
+                                    clearContinueReadingTimestamp = now
+                                    saveClearContinueReadingTimestamp(context, now)
+                                }
                             },
                             cacheSizeMB = cacheSizeMB,
                             comicSizeMB = comicSizeMB,
@@ -1669,6 +1681,7 @@ fun ComicApp(
                             isMultiSelectMode = isMultiSelectMode,
                             selectedItems = selectedItems,
                             appLanguage = appLanguage,
+                            clearContinueReadingTimestamp = clearContinueReadingTimestamp,
                             onMediaTypeChange = { 
                                 currentMediaType = it
                                 saveLastMediaType(context, it)
@@ -1730,6 +1743,7 @@ fun ComicApp(
                             currentPlayingTrackIndex = playbackState.trackIndex,
                             searchQuery = searchQuery,
                             audioSearchMatchingTracks = audioSearchMatchingTracks,
+                            showContinueReading = showContinueReading,
                             onAudioTrackClick = { audio, trackIndex ->
                                 // 根据显示模式决定点击行为
                                 if (audioDisplayMode == AudioDisplayMode.SINGLES) {
