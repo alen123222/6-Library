@@ -36,6 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import androidx.compose.ui.draw.scale
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.airbnb.lottie.compose.*
@@ -588,6 +589,70 @@ fun UserGuideSection(appLanguage: AppLanguage) {
 }
 
 @Composable
+fun ExperimentalSection(appLanguage: AppLanguage, onNavigateToPluginSource: (String) -> Unit) {
+    var isEnabled by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 4.dp)) {
+            Icon(Icons.Rounded.Science, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = if (appLanguage == AppLanguage.CHINESE) "实验室" else "Laboratory",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Spacer(Modifier.weight(1f))
+            Switch(
+                checked = isEnabled,
+                onCheckedChange = { isEnabled = it },
+                modifier = Modifier.scale(0.8f)
+            )
+        }
+
+        AnimatedVisibility(
+            visible = isEnabled,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut()
+        ) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
+            ) {
+                Column {
+                    SettingsRow(
+                        icon = Icons.Rounded.MenuBook,
+                        title = if (appLanguage == AppLanguage.CHINESE) "漫画源扩展" else "Comic Sources",
+                        iconTint = MaterialTheme.colorScheme.primary,
+                        onClick = { onNavigateToPluginSource(if (appLanguage == AppLanguage.CHINESE) "漫画" else "Comic") }
+                    )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f), modifier = Modifier.padding(horizontal = 20.dp))
+                    SettingsRow(
+                        icon = Icons.AutoMirrored.Rounded.MenuBook,
+                        title = if (appLanguage == AppLanguage.CHINESE) "小说源扩展" else "Novel Sources",
+                        iconTint = MaterialTheme.colorScheme.secondary,
+                        onClick = { onNavigateToPluginSource(if (appLanguage == AppLanguage.CHINESE) "小说" else "Novel") }
+                    )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f), modifier = Modifier.padding(horizontal = 20.dp))
+                    SettingsRow(
+                        icon = Icons.Rounded.LibraryMusic,
+                        title = if (appLanguage == AppLanguage.CHINESE) "音频源扩展" else "Audio Sources",
+                        iconTint = MaterialTheme.colorScheme.tertiary,
+                        onClick = { onNavigateToPluginSource(if (appLanguage == AppLanguage.CHINESE) "音源" else "Audio") }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun LandingScreen(
     paddingValues: PaddingValues,
     appLanguage: AppLanguage,
@@ -609,7 +674,8 @@ fun LandingScreen(
     // --- 存储空间 ---
     comicSizeMB: Float = 0f,
     novelSizeMB: Float = 0f,
-    audioSizeMB: Float = 0f
+    audioSizeMB: Float = 0f,
+    onNavigateToPluginSource: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
     var showKonfetti by remember { mutableStateOf(false) }
@@ -662,6 +728,7 @@ fun LandingScreen(
                     item { SettingsSection(appLanguage = appLanguage, currentTheme = currentTheme, cacheSizeMB = cacheSizeMB, showContinueReading = showContinueReading, onThemeChange = onThemeChange, onLanguageChange = onLanguageChange, onClearCache = onClearCache, onToggleContinueReading = onToggleContinueReading) }
                     item { StorageSection(appLanguage = appLanguage, comicSizeMB = comicSizeMB, novelSizeMB = novelSizeMB, audioSizeMB = audioSizeMB) }
                     item { UserGuideSection(appLanguage = appLanguage) }
+                    item { ExperimentalSection(appLanguage = appLanguage, onNavigateToPluginSource = onNavigateToPluginSource) }
                 }
             }
         } else {
@@ -681,6 +748,8 @@ fun LandingScreen(
                 item { StorageSection(appLanguage = appLanguage, comicSizeMB = comicSizeMB, novelSizeMB = novelSizeMB, audioSizeMB = audioSizeMB) }
                 item { Spacer(Modifier.height(4.dp)) }
                 item { UserGuideSection(appLanguage = appLanguage) }
+                item { Spacer(Modifier.height(4.dp)) }
+                item { ExperimentalSection(appLanguage = appLanguage, onNavigateToPluginSource = onNavigateToPluginSource) }
             }
         }
         

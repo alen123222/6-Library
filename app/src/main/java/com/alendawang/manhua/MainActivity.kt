@@ -1547,6 +1547,9 @@ fun ComicApp(
                                             is Screen.Landing -> {
                                                 currentScreen = Screen.Home
                                             }
+                                            is Screen.PluginSource -> {
+                                                currentScreen = Screen.Landing
+                                            }
                                             else -> {}
                                         }
                                     }
@@ -1657,7 +1660,16 @@ fun ComicApp(
                             cacheSizeMB = cacheSizeMB,
                             comicSizeMB = comicSizeMB,
                             novelSizeMB = novelSizeMB,
-                            audioSizeMB = audioSizeMB
+                            audioSizeMB = audioSizeMB,
+                            onNavigateToPluginSource = { title -> 
+                                currentScreen = Screen.PluginSource(title) 
+                            }
+                        )
+                    }
+                    is Screen.PluginSource -> {
+                        PluginSourceScreen(
+                            title = screen.title,
+                            onBack = { currentScreen = Screen.Landing }
                         )
                     }
                     is Screen.Home -> {

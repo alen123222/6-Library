@@ -11,6 +11,7 @@ sealed class Screen {
     data class ComicReader(val comicId: String, val chapterIndex: Int, val initialScrollIndex: Int) : Screen()
     data class NovelReader(val novelId: String, val chapterIndex: Int, val initialScrollPosition: Int) : Screen()
     data class AudioPlayer(val audioId: String, val trackIndex: Int, val initialPosition: Long, val showLyricsInitially: Boolean = false) : Screen()
+    data class PluginSource(val title: String) : Screen()
 }
 
 val ScreenSaver: Saver<Screen, List<Any>> = Saver(
@@ -22,6 +23,7 @@ val ScreenSaver: Saver<Screen, List<Any>> = Saver(
             is Screen.ComicReader -> listOf("comic", screen.comicId, screen.chapterIndex, screen.initialScrollIndex)
             is Screen.NovelReader -> listOf("novel", screen.novelId, screen.chapterIndex, screen.initialScrollPosition)
             is Screen.AudioPlayer -> listOf("audio", screen.audioId, screen.trackIndex, screen.initialPosition, screen.showLyricsInitially)
+            is Screen.PluginSource -> listOf("plugin_source", screen.title)
         }
     },
     restore = { saved ->
@@ -53,6 +55,10 @@ val ScreenSaver: Saver<Screen, List<Any>> = Saver(
                 val initialPosition = (saved.getOrNull(3) as? Number)?.toLong() ?: 0L
                 val showLyricsInitially = saved.getOrNull(4) as? Boolean ?: false
                 Screen.AudioPlayer(audioId, trackIndex, initialPosition, showLyricsInitially)
+            }
+            "plugin_source" -> {
+                val title = saved.getOrNull(1) as? String ?: return@Saver Screen.Home
+                Screen.PluginSource(title)
             }
             "landing" -> Screen.Landing
             else -> Screen.Home
