@@ -13,9 +13,11 @@ data class LegadoSource(
     val searchUrl: String = "",
     val exploreUrl: String = "",
     val ruleSearch: RuleSearch? = null,
+    val ruleExplore: RuleSearch? = null,
     val ruleBookInfo: RuleBookInfo? = null,
     val ruleToc: RuleToc? = null,
-    val ruleContent: RuleContent? = null
+    val ruleContent: RuleContent? = null,
+    val header: String? = null
 )
 
 data class RuleSearch(

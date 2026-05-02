@@ -99,6 +99,7 @@ dependencies {
     // 插件源解析依赖
     implementation("org.jsoup:jsoup:1.17.2")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.jayway.jsonpath:json-path:2.9.0")
 
     // Room 数据库
     implementation(libs.androidx.room.runtime)

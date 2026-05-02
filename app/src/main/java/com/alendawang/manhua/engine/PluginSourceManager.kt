@@ -109,4 +109,10 @@ object PluginSourceManager {
         existing.removeAll { it.bookSourceUrl == sourceUrl }
         saveSources(context, existing)
     }
+
+    fun deleteSources(context: Context, sourceUrls: Set<String>) {
+        val existing = getSources(context).toMutableList()
+        existing.removeAll { it.bookSourceUrl in sourceUrls }
+        saveSources(context, existing)
+    }
 }

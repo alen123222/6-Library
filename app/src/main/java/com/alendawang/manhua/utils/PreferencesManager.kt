@@ -599,3 +599,16 @@ fun addAudioListenTime(context: Context, elapsedMs: Long) {
     val current = loadTotalAudioListenTime(context)
     saveTotalAudioListenTime(context, current + elapsedMs)
 }
+
+// --- 实验室开关 ---
+private const val KEY_LAB_ENABLED = "lab_enabled"
+
+fun loadLabEnabled(context: Context): Boolean {
+    return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        .getBoolean(KEY_LAB_ENABLED, false)
+}
+
+fun saveLabEnabled(context: Context, enabled: Boolean) {
+    context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        .edit { putBoolean(KEY_LAB_ENABLED, enabled) }
+}

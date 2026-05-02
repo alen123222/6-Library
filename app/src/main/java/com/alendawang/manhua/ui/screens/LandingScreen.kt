@@ -43,6 +43,8 @@ import com.airbnb.lottie.compose.*
 import com.alendawang.manhua.R
 import com.alendawang.manhua.model.AppLanguage
 import com.alendawang.manhua.utils.isLandscape
+import com.alendawang.manhua.utils.loadLabEnabled
+import com.alendawang.manhua.utils.saveLabEnabled
 import nl.dionsegijn.konfetti.compose.KonfettiView
 import nl.dionsegijn.konfetti.core.Party
 import nl.dionsegijn.konfetti.core.Position
@@ -590,7 +592,8 @@ fun UserGuideSection(appLanguage: AppLanguage) {
 
 @Composable
 fun ExperimentalSection(appLanguage: AppLanguage, onNavigateToPluginSource: (String) -> Unit) {
-    var isEnabled by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    var isEnabled by remember { mutableStateOf(loadLabEnabled(context)) }
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -608,7 +611,10 @@ fun ExperimentalSection(appLanguage: AppLanguage, onNavigateToPluginSource: (Str
             Spacer(Modifier.weight(1f))
             Switch(
                 checked = isEnabled,
-                onCheckedChange = { isEnabled = it },
+                onCheckedChange = {
+                    isEnabled = it
+                    saveLabEnabled(context, it)
+                },
                 modifier = Modifier.scale(0.8f)
             )
         }
