@@ -413,7 +413,9 @@ fun SettingsSection(
     onThemeChange: () -> Unit,
     onLanguageChange: () -> Unit,
     onClearCache: () -> Unit,
-    onToggleContinueReading: (Boolean) -> Unit
+    onToggleContinueReading: (Boolean) -> Unit,
+    nomediaEnabled: Boolean = true,
+    onToggleNomedia: (Boolean) -> Unit = {}
 ) {
     var showClearDialog by remember { mutableStateOf(false) }
 
@@ -471,6 +473,14 @@ fun SettingsSection(
                     iconTint = MaterialTheme.colorScheme.error,
                     valueColor = MaterialTheme.colorScheme.error,
                     onClick = { showClearDialog = true }
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f), modifier = Modifier.padding(horizontal = 20.dp))
+                SettingsRow(
+                    icon = Icons.Rounded.HideImage,
+                    title = if (appLanguage == AppLanguage.CHINESE) "生成 .nomedia 防扫描" else ".nomedia Anti-Scan",
+                    value = if (nomediaEnabled) (if (appLanguage == AppLanguage.CHINESE) "开启" else "On") else (if (appLanguage == AppLanguage.CHINESE) "关闭" else "Off"),
+                    iconTint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    onClick = { onToggleNomedia(!nomediaEnabled) }
                 )
             }
         }
@@ -681,7 +691,9 @@ fun LandingScreen(
     comicSizeMB: Float = 0f,
     novelSizeMB: Float = 0f,
     audioSizeMB: Float = 0f,
-    onNavigateToPluginSource: (String) -> Unit = {}
+    onNavigateToPluginSource: (String) -> Unit = {},
+    nomediaEnabled: Boolean = true,
+    onToggleNomedia: (Boolean) -> Unit = {}
 ) {
     val context = LocalContext.current
     var showKonfetti by remember { mutableStateOf(false) }
@@ -731,7 +743,7 @@ fun LandingScreen(
                     verticalArrangement = Arrangement.spacedBy(24.dp),
                     contentPadding = PaddingValues(top = 24.dp, bottom = 40.dp)
                 ) {
-                    item { SettingsSection(appLanguage = appLanguage, currentTheme = currentTheme, cacheSizeMB = cacheSizeMB, showContinueReading = showContinueReading, onThemeChange = onThemeChange, onLanguageChange = onLanguageChange, onClearCache = onClearCache, onToggleContinueReading = onToggleContinueReading) }
+                    item { SettingsSection(appLanguage = appLanguage, currentTheme = currentTheme, cacheSizeMB = cacheSizeMB, showContinueReading = showContinueReading, onThemeChange = onThemeChange, onLanguageChange = onLanguageChange, onClearCache = onClearCache, onToggleContinueReading = onToggleContinueReading, nomediaEnabled = nomediaEnabled, onToggleNomedia = onToggleNomedia) }
                     item { StorageSection(appLanguage = appLanguage, comicSizeMB = comicSizeMB, novelSizeMB = novelSizeMB, audioSizeMB = audioSizeMB) }
                     item { UserGuideSection(appLanguage = appLanguage) }
                     item { ExperimentalSection(appLanguage = appLanguage, onNavigateToPluginSource = onNavigateToPluginSource) }
@@ -750,7 +762,7 @@ fun LandingScreen(
                 item { WelcomeBanner(appLanguage) }
                 item { FeatureCardsRow(appLanguage, totalComicTimeMs, novelList, totalAudioTimeMs) }
                 item { Spacer(Modifier.height(4.dp)) }
-                item { SettingsSection(appLanguage = appLanguage, currentTheme = currentTheme, cacheSizeMB = cacheSizeMB, showContinueReading = showContinueReading, onThemeChange = onThemeChange, onLanguageChange = onLanguageChange, onClearCache = onClearCache, onToggleContinueReading = onToggleContinueReading) }
+                item { SettingsSection(appLanguage = appLanguage, currentTheme = currentTheme, cacheSizeMB = cacheSizeMB, showContinueReading = showContinueReading, onThemeChange = onThemeChange, onLanguageChange = onLanguageChange, onClearCache = onClearCache, onToggleContinueReading = onToggleContinueReading, nomediaEnabled = nomediaEnabled, onToggleNomedia = onToggleNomedia) }
                 item { StorageSection(appLanguage = appLanguage, comicSizeMB = comicSizeMB, novelSizeMB = novelSizeMB, audioSizeMB = audioSizeMB) }
                 item { Spacer(Modifier.height(4.dp)) }
                 item { UserGuideSection(appLanguage = appLanguage) }

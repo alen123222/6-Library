@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.LazyListState
@@ -206,6 +207,7 @@ fun ComicApp(
     var appLanguage by remember { mutableStateOf(loadAppLanguage(context)) }
     var showContinueReading by remember { mutableStateOf(loadShowContinueReading(context)) }
     var clearContinueReadingTimestamp by remember { mutableStateOf(loadClearContinueReadingTimestamp(context)) }
+    var nomediaEnabled by remember { mutableStateOf(loadNomediaEnabled(context)) }
 
     // 漫画状态
     var sortOption by remember { mutableStateOf(loadSortOption(context)) }
@@ -685,7 +687,7 @@ fun ComicApp(
                     MediaType.COMIC -> {
                         val existingUris = comicHistoryList.map { it.uriString }.toSet()
                         val totalItemCount = comicHistoryList.size
-                        scanComicsFlow(context, treeUri, existingUris, totalItemCount) { name ->
+                        scanComicsFlow(context, treeUri, existingUris, totalItemCount, nomediaEnabled = nomediaEnabled) { name ->
                             if (scanState.isScanning) scanState = scanState.copy(currentFolder = name)
                         }.collect { newComic ->
                             if (comicHistoryList.none { it.uriString == newComic.uriString }) {
@@ -708,7 +710,7 @@ fun ComicApp(
                     MediaType.AUDIO -> {
                         val existingUris = audioHistoryList.map { it.uriString }.toSet()
                         val totalItemCount = audioHistoryList.size
-                        scanAudiosFlow(context, treeUri, existingUris, totalItemCount) { name ->
+                        scanAudiosFlow(context, treeUri, existingUris, totalItemCount, nomediaEnabled = nomediaEnabled) { name ->
                             if (scanState.isScanning) scanState = scanState.copy(currentFolder = name)
                         }.collect { newAudio ->
                             if (audioHistoryList.none { it.uriString == newAudio.uriString }) {
@@ -1577,6 +1579,11 @@ fun ComicApp(
                                         }
                                     }
 
+            // 列表滚动位置记忆 — 提升到 Crossfade 外部，使其在页面导航时持久存在
+            val comicGridState = rememberLazyGridState()
+            val novelGridState = rememberLazyGridState()
+            val audioGridState = rememberLazyGridState()
+
             Crossfade(targetState = currentScreen, label = "screen", animationSpec = tween(400)) { screen ->
                 when (screen) {
                     is Screen.Landing -> {
@@ -1663,6 +1670,11 @@ fun ComicApp(
                             audioSizeMB = audioSizeMB,
                             onNavigateToPluginSource = { title -> 
                                 currentScreen = Screen.PluginSource(title) 
+                            },
+                            nomediaEnabled = nomediaEnabled,
+                            onToggleNomedia = { enabled ->
+                                nomediaEnabled = enabled
+                                saveNomediaEnabled(context, enabled)
                             }
                         )
                     }
@@ -1814,7 +1826,10 @@ fun ComicApp(
                                         }
                                     }
                                 }
-                            }
+                            },
+                            comicGridState = comicGridState,
+                            novelGridState = novelGridState,
+                            audioGridState = audioGridState
                         )
                     }
                     is Screen.Details -> {

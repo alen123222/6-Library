@@ -42,6 +42,7 @@ fun scanComicsFlow(
     rootTreeUri: Uri, 
     existingComics: Map<String, ComicHistory>,
     totalItems: Int = Int.MAX_VALUE,
+    nomediaEnabled: Boolean = true,
     onFolderScanning: (String) -> Unit
 ): Flow<ComicHistory> = flow {
     val rootDoc = DocumentFile.fromTreeUri(context, rootTreeUri) ?: return@flow
@@ -185,7 +186,8 @@ fun scanComicsFlow(
         withContext(Dispatchers.Main) { onFolderScanning(comicName) }
 
         try {
-            if (level1File.findFile(".nomedia") == null) {
+            // 只在纯图片文件夹下生成 .nomedia（压缩包类型不生成）
+            if (nomediaEnabled && level1File.findFile(".nomedia") == null) {
                 level1File.createFile("application/octet-stream", ".nomedia")
             }
         } catch (e: Exception) { }
@@ -284,11 +286,11 @@ fun scanComicsFlow(
 
 
 // 兼容旧接口
-fun scanComicsFlow(context: Context, rootTreeUri: Uri, existingUris: Set<String>, totalItems: Int = Int.MAX_VALUE, onFolderScanning: (String) -> Unit): Flow<ComicHistory> {
+fun scanComicsFlow(context: Context, rootTreeUri: Uri, existingUris: Set<String>, totalItems: Int = Int.MAX_VALUE, nomediaEnabled: Boolean = true, onFolderScanning: (String) -> Unit): Flow<ComicHistory> {
     val emptyMap = existingUris.associateWith { uri -> 
         ComicHistory(id = uri, name = "", uriString = uri, coverUriString = null, timestamp = 0, lastScannedAt = Long.MAX_VALUE)
     }
-    return scanComicsFlow(context, rootTreeUri, emptyMap, totalItems, onFolderScanning)
+    return scanComicsFlow(context, rootTreeUri, emptyMap, totalItems, nomediaEnabled = nomediaEnabled, onFolderScanning = onFolderScanning)
 }
 
 // --- 小说扫描 ---
@@ -296,11 +298,7 @@ fun scanNovelsFlow(context: Context, rootTreeUri: Uri, existingUris: Set<String>
     val rootDoc = DocumentFile.fromTreeUri(context, rootTreeUri) ?: return@flow
     withContext(Dispatchers.Main) { onFolderScanning(rootDoc.name ?: "小说") }
 
-    try {
-        if (rootDoc.findFile(".nomedia") == null) {
-            rootDoc.createFile("application/octet-stream", ".nomedia")
-        }
-    } catch (_: Exception) { }
+    // 小说是文本文件，不会被系统媒体库扫描，不生成 .nomedia
 
     val files = rootDoc.listFiles()
     
@@ -365,12 +363,12 @@ fun scanNovelsFlow(context: Context, rootTreeUri: Uri, existingUris: Set<String>
 }.flowOn(Dispatchers.IO)
 
 // --- 音频扫描 ---
-fun scanAudiosFlow(context: Context, rootTreeUri: Uri, existingUris: Set<String>, totalItems: Int = Int.MAX_VALUE, onFolderScanning: (String) -> Unit): Flow<AudioHistory> = flow {
+fun scanAudiosFlow(context: Context, rootTreeUri: Uri, existingUris: Set<String>, totalItems: Int = Int.MAX_VALUE, nomediaEnabled: Boolean = true, onFolderScanning: (String) -> Unit): Flow<AudioHistory> = flow {
     val rootDoc = DocumentFile.fromTreeUri(context, rootTreeUri) ?: return@flow
     withContext(Dispatchers.Main) { onFolderScanning(rootDoc.name ?: "音频") }
 
     try {
-        if (rootDoc.findFile(".nomedia") == null) {
+        if (nomediaEnabled && rootDoc.findFile(".nomedia") == null) {
             rootDoc.createFile("application/octet-stream", ".nomedia")
         }
     } catch (_: Exception) { }

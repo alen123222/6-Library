@@ -6,6 +6,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
@@ -108,7 +110,10 @@ fun HomeScreen(
     onToggleSelection: (String) -> Unit = {},
     onNavigateToPlayer: () -> Unit = {},
     recentAudioPlays: List<RecentAudioPlay> = emptyList(),
-    onContinueReadingClick: (ContinueReadingItem) -> Unit = {}
+    onContinueReadingClick: (ContinueReadingItem) -> Unit = {},
+    comicGridState: LazyGridState = rememberLazyGridState(),
+    novelGridState: LazyGridState = rememberLazyGridState(),
+    audioGridState: LazyGridState = rememberLazyGridState()
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -230,7 +235,10 @@ fun HomeScreen(
                     allNovels = allNovels,
                     allAudios = allAudios,
                     recentAudioPlays = recentAudioPlays,
-                    onContinueReadingClick = onContinueReadingClick
+                    onContinueReadingClick = onContinueReadingClick,
+                    comicGridState = comicGridState,
+                    novelGridState = novelGridState,
+                    audioGridState = audioGridState
                 )
             }
         } else {
@@ -418,7 +426,8 @@ fun HomeScreen(
                                 isMultiSelectMode = isMultiSelectMode,
                                 selectedItems = selectedItems,
                                 onHistoryItemClick = { onHistoryItemClick(it) },
-                                onHistoryItemLongClick = { onHistoryItemLongClick(it) }
+                                onHistoryItemLongClick = { onHistoryItemLongClick(it) },
+                                lazyGridState = comicGridState
                             )
                         }
                         MediaType.NOVEL -> {
@@ -430,7 +439,8 @@ fun HomeScreen(
                                 isMultiSelectMode = isMultiSelectMode,
                                 selectedItems = selectedItems,
                                 onHistoryItemClick = { onHistoryItemClick(it) },
-                                onHistoryItemLongClick = { onHistoryItemLongClick(it) }
+                                onHistoryItemLongClick = { onHistoryItemLongClick(it) },
+                                lazyGridState = novelGridState
                             )
                         }
                         MediaType.AUDIO -> {
@@ -450,7 +460,8 @@ fun HomeScreen(
                                 onHistoryItemClick = { onHistoryItemClick(it) },
                                 onHistoryItemLongClick = { onHistoryItemLongClick(it) },
                                 onAudioTrackClick = onAudioTrackClick,
-                                onAudioTrackLongClick = onAudioTrackLongClick
+                                onAudioTrackLongClick = onAudioTrackLongClick,
+                                lazyGridState = audioGridState
                             )
                         }
                     }
@@ -622,7 +633,10 @@ fun RowScope.LandscapeContentArea(
     allNovels: List<NovelHistory> = emptyList(),
     allAudios: List<AudioHistory> = emptyList(),
     recentAudioPlays: List<RecentAudioPlay> = emptyList(),
-    onContinueReadingClick: (ContinueReadingItem) -> Unit = {}
+    onContinueReadingClick: (ContinueReadingItem) -> Unit = {},
+    comicGridState: LazyGridState = rememberLazyGridState(),
+    novelGridState: LazyGridState = rememberLazyGridState(),
+    audioGridState: LazyGridState = rememberLazyGridState()
 ) {
     Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
         Column(modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp)) {
@@ -733,7 +747,8 @@ fun RowScope.LandscapeContentArea(
                                 isMultiSelectMode = isMultiSelectMode,
                                 selectedItems = selectedItems,
                                 onHistoryItemClick = { onHistoryItemClick(it) },
-                                onHistoryItemLongClick = { onHistoryItemLongClick(it) }
+                                onHistoryItemLongClick = { onHistoryItemLongClick(it) },
+                                lazyGridState = comicGridState
                             )
                         }
                         MediaType.NOVEL -> {
@@ -745,7 +760,8 @@ fun RowScope.LandscapeContentArea(
                                 isMultiSelectMode = isMultiSelectMode,
                                 selectedItems = selectedItems,
                                 onHistoryItemClick = { onHistoryItemClick(it) },
-                                onHistoryItemLongClick = { onHistoryItemLongClick(it) }
+                                onHistoryItemLongClick = { onHistoryItemLongClick(it) },
+                                lazyGridState = novelGridState
                             )
                         }
                         MediaType.AUDIO -> {
@@ -765,7 +781,8 @@ fun RowScope.LandscapeContentArea(
                                 onHistoryItemClick = { onHistoryItemClick(it) },
                                 onHistoryItemLongClick = { onHistoryItemLongClick(it) },
                                 onAudioTrackClick = onAudioTrackClick,
-                                onAudioTrackLongClick = onAudioTrackLongClick
+                                onAudioTrackLongClick = onAudioTrackLongClick,
+                                lazyGridState = audioGridState
                             )
                         }
                     }

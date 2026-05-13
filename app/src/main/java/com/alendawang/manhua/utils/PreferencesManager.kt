@@ -32,6 +32,7 @@ private const val KEY_UNLOCK_METHOD = "unlock_method"
 private const val KEY_IMPORT_TREE_URI = "import_tree_uri"
 private const val KEY_DONT_ASK_IMPORT_DIR = "dont_ask_import_dir"
 private const val KEY_DONT_SHOW_LARGE_FILE_TIP = "dont_show_large_file_tip"
+private const val KEY_NOMEDIA_ENABLED = "nomedia_enabled"
 
 private const val PREFS_READER_CONFIG = "reader_config_prefs"
 private const val KEY_READER_CONFIG = "reader_config_v1"
@@ -611,4 +612,15 @@ fun loadLabEnabled(context: Context): Boolean {
 fun saveLabEnabled(context: Context, enabled: Boolean) {
     context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         .edit { putBoolean(KEY_LAB_ENABLED, enabled) }
+}
+
+// --- .nomedia 文件生成开关 ---
+fun loadNomediaEnabled(context: Context): Boolean {
+    return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        .getBoolean(KEY_NOMEDIA_ENABLED, true) // 默认开启
+}
+
+fun saveNomediaEnabled(context: Context, enabled: Boolean) {
+    context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        .edit { putBoolean(KEY_NOMEDIA_ENABLED, enabled) }
 }
