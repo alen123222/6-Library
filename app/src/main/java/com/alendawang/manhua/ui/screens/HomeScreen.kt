@@ -108,6 +108,7 @@ fun HomeScreen(
     onAudioTrackClick: (AudioHistory, Int) -> Unit = { _, _ -> },
     onAudioTrackLongClick: (AudioHistory, Int) -> Unit = { _, _ -> },
     onToggleSelection: (String) -> Unit = {},
+    onSelectionChange: (Set<String>) -> Unit = {},
     onNavigateToPlayer: () -> Unit = {},
     recentAudioPlays: List<RecentAudioPlay> = emptyList(),
     onContinueReadingClick: (ContinueReadingItem) -> Unit = {},
@@ -230,6 +231,7 @@ fun HomeScreen(
                     onAudioTrackClick = onAudioTrackClick,
                     onAudioTrackLongClick = onAudioTrackLongClick,
                     onToggleSelection = onToggleSelection,
+                    onSelectionChange = onSelectionChange,
                     onNavigateToPlayer = onNavigateToPlayer,
                     allComics = allComics,
                     allNovels = allNovels,
@@ -427,6 +429,7 @@ fun HomeScreen(
                                 selectedItems = selectedItems,
                                 onHistoryItemClick = { onHistoryItemClick(it) },
                                 onHistoryItemLongClick = { onHistoryItemLongClick(it) },
+                                onSelectionChange = onSelectionChange,
                                 lazyGridState = comicGridState
                             )
                         }
@@ -440,6 +443,7 @@ fun HomeScreen(
                                 selectedItems = selectedItems,
                                 onHistoryItemClick = { onHistoryItemClick(it) },
                                 onHistoryItemLongClick = { onHistoryItemLongClick(it) },
+                                onSelectionChange = onSelectionChange,
                                 lazyGridState = novelGridState
                             )
                         }
@@ -461,6 +465,7 @@ fun HomeScreen(
                                 onHistoryItemLongClick = { onHistoryItemLongClick(it) },
                                 onAudioTrackClick = onAudioTrackClick,
                                 onAudioTrackLongClick = onAudioTrackLongClick,
+                                onSelectionChange = onSelectionChange,
                                 lazyGridState = audioGridState
                             )
                         }
@@ -628,6 +633,7 @@ fun RowScope.LandscapeContentArea(
     onAudioTrackClick: (AudioHistory, Int) -> Unit,
     onAudioTrackLongClick: (AudioHistory, Int) -> Unit,
     onToggleSelection: (String) -> Unit,
+    onSelectionChange: (Set<String>) -> Unit = {},
     onNavigateToPlayer: () -> Unit,
     allComics: List<ComicHistory> = emptyList(),
     allNovels: List<NovelHistory> = emptyList(),
@@ -748,6 +754,7 @@ fun RowScope.LandscapeContentArea(
                                 selectedItems = selectedItems,
                                 onHistoryItemClick = { onHistoryItemClick(it) },
                                 onHistoryItemLongClick = { onHistoryItemLongClick(it) },
+                                onSelectionChange = onSelectionChange,
                                 lazyGridState = comicGridState
                             )
                         }
@@ -761,6 +768,7 @@ fun RowScope.LandscapeContentArea(
                                 selectedItems = selectedItems,
                                 onHistoryItemClick = { onHistoryItemClick(it) },
                                 onHistoryItemLongClick = { onHistoryItemLongClick(it) },
+                                onSelectionChange = onSelectionChange,
                                 lazyGridState = novelGridState
                             )
                         }
@@ -782,6 +790,7 @@ fun RowScope.LandscapeContentArea(
                                 onHistoryItemLongClick = { onHistoryItemLongClick(it) },
                                 onAudioTrackClick = onAudioTrackClick,
                                 onAudioTrackLongClick = onAudioTrackLongClick,
+                                onSelectionChange = onSelectionChange,
                                 lazyGridState = audioGridState
                             )
                         }

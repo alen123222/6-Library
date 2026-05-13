@@ -185,17 +185,11 @@ fun scanComicsFlow(
         val comicName = fileName
         withContext(Dispatchers.Main) { onFolderScanning(comicName) }
 
-        try {
-            // 只在纯图片文件夹下生成 .nomedia（压缩包类型不生成）
-            if (nomediaEnabled && level1File.findFile(".nomedia") == null) {
-                level1File.createFile("application/octet-stream", ".nomedia")
-            }
-        } catch (e: Exception) { }
-
         val subFiles = level1File.listFiles()
         val chapters = mutableListOf<ComicChapter>()
         var coverUri: String? = null
         var totalPages = 0
+        var isPureImageFolder = false  // 标记是否为纯图片文件夹（含子文件夹章节）
         
         val folderChapters = subFiles.filter { it.isDirectory }
         val archiveChapterFiles = subFiles.filter { 
@@ -203,7 +197,8 @@ fun scanComicsFlow(
         }.sortedWith { a, b -> compareNatural(a.name ?: "", b.name ?: "") }
         
         if (folderChapters.isNotEmpty()) {
-            // 子文件夹作为章节
+            // 子文件夹作为章节（包含图片，需要 .nomedia）
+            isPureImageFolder = true
             folderChapters.forEach { chFolder -> 
                 chapters.add(ComicChapter(chFolder.name ?: "Chapter", chFolder.uri.toString(), ComicSourceType.FOLDER))
                 val chapterImageCount = chFolder.listFiles().count { it.isFile && it.type?.startsWith("image/") == true }
@@ -212,7 +207,8 @@ fun scanComicsFlow(
             val firstChapterImages = folderChapters.first().listFiles().filter { it.isFile && it.type?.startsWith("image/") == true }
             if (firstChapterImages.isNotEmpty()) coverUri = firstChapterImages.sortedWith { a, b -> compareNatural(a.name?:"", b.name?:"") }.first().uri.toString()
         } else if (archiveChapterFiles.isNotEmpty()) {
-            // 压缩包文件作为章节（支持 漫画一/01.zip, 02.zip 这种结构）
+            // 压缩包文件作为章节 → 不需要 .nomedia（压缩包不会被媒体库扫描）
+            isPureImageFolder = false
             for (archiveFile in archiveChapterFiles) {
                 currentCoroutineContext().ensureActive()
                 val archiveName = archiveFile.name ?: "Chapter"
@@ -247,13 +243,23 @@ fun scanComicsFlow(
                 }
             }
         } else {
-            // 直接图片作为"全一册"
+            // 直接图片作为"全一册"（纯图片，需要 .nomedia）
+            isPureImageFolder = true
             val images = subFiles.filter { it.isFile && it.type?.startsWith("image/") == true }
             if (images.isNotEmpty()) {
                 chapters.add(ComicChapter("全一册", level1File.uri.toString(), ComicSourceType.FOLDER))
                 coverUri = images.sortedWith { a, b -> compareNatural(a.name?:"", b.name?:"") }.first().uri.toString()
                 totalPages = images.size
             }
+        }
+        
+        // 只在纯图片文件夹下生成 .nomedia（压缩包类型不生成）
+        if (nomediaEnabled && isPureImageFolder && chapters.isNotEmpty()) {
+            try {
+                if (level1File.findFile(".nomedia") == null) {
+                    level1File.createFile("application/octet-stream", ".nomedia")
+                }
+            } catch (_: Exception) { }
         }
         chapters.sortWith { c1, c2 -> compareNatural(c1.name, c2.name) }
         

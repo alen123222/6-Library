@@ -2,6 +2,7 @@ package com.alendawang.manhua.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.shape.CircleShape
@@ -12,7 +13,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import com.alendawang.manhua.model.AppTheme
 import com.alendawang.manhua.model.AudioDisplayMode
@@ -22,6 +25,7 @@ import com.alendawang.manhua.model.ComicHistory
 import com.alendawang.manhua.model.DisplayMode
 import com.alendawang.manhua.model.NovelHistory
 import com.alendawang.manhua.ui.components.*
+import com.alendawang.manhua.ui.components.resolveItemIndexFromPosition
 
 // ============================================================
 // 共享多选覆盖层 — 替代原先复制6次的多选指示器代码
@@ -71,6 +75,71 @@ fun BoxScope.MultiSelectOverlay(
 }
 
 // ============================================================
+// 拖拽多选的 Grid Modifier
+// ============================================================
+@Composable
+fun Modifier.dragSelectModifier(
+    isMultiSelectMode: Boolean,
+    gridState: LazyGridState,
+    itemIds: List<String>,
+    selectedItems: Set<String>,
+    onSelectionChange: (Set<String>) -> Unit
+): Modifier {
+    if (!isMultiSelectMode) return this
+
+    var isDragging by remember { mutableStateOf(false) }
+    var startIndex by remember { mutableIntStateOf(-1) }
+    var currentIndex by remember { mutableIntStateOf(-1) }
+    var isSelecting by remember { mutableStateOf(true) }
+    var initialSelection by remember { mutableStateOf(emptySet<String>()) }
+
+    return this.pointerInput(isMultiSelectMode, itemIds.size) {
+        detectDragGestures(
+            onDragStart = { offset ->
+                val index = resolveItemIndexFromPosition(gridState, offset)
+                if (index >= 0 && index < itemIds.size) {
+                    isDragging = true
+                    startIndex = index
+                    currentIndex = index
+                    initialSelection = selectedItems.toSet()
+                    isSelecting = !selectedItems.contains(itemIds[index])
+                    // 立即应用首个 item
+                    val draggedIds = setOf(itemIds[index])
+                    val newSelection = if (isSelecting) initialSelection + draggedIds else initialSelection - draggedIds
+                    onSelectionChange(newSelection)
+                }
+            },
+            onDrag = { change, _ ->
+                if (!isDragging) return@detectDragGestures
+                change.consume()
+                val index = resolveItemIndexFromPosition(gridState, change.position)
+                if (index >= 0 && index < itemIds.size && index != currentIndex) {
+                    currentIndex = index
+                    val rangeStart = minOf(startIndex, currentIndex)
+                    val rangeEnd = maxOf(startIndex, currentIndex)
+                    val draggedIds = (rangeStart..rangeEnd)
+                        .filter { it in itemIds.indices }
+                        .map { itemIds[it] }
+                        .toSet()
+                    val newSelection = if (isSelecting) initialSelection + draggedIds else initialSelection - draggedIds
+                    onSelectionChange(newSelection)
+                }
+            },
+            onDragEnd = {
+                isDragging = false
+                startIndex = -1
+                currentIndex = -1
+            },
+            onDragCancel = {
+                isDragging = false
+                startIndex = -1
+                currentIndex = -1
+            }
+        )
+    }
+}
+
+// ============================================================
 // 漫画 Tab 内容
 // ============================================================
 @Composable
@@ -83,17 +152,21 @@ fun ComicTabContent(
     selectedItems: Set<String>,
     onHistoryItemClick: (ComicHistory) -> Unit,
     onHistoryItemLongClick: (ComicHistory) -> Unit,
+    onSelectionChange: (Set<String>) -> Unit = {},
     lazyGridState: LazyGridState = rememberLazyGridState()
 ) {
     val cachedComicList = remember(comicList.hashCode()) { comicList }
     val isScrolling = lazyGridState.isScrollInProgress
+    val itemIds = remember(cachedComicList.hashCode()) { cachedComicList.map { it.id } }
 
     LazyVerticalGrid(
         state = lazyGridState,
         columns = if (displayMode == DisplayMode.ListView) GridCells.Fixed(1)
                   else GridCells.Fixed(displayMode.columnCount),
         contentPadding = PaddingValues(6.dp),
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
+            .dragSelectModifier(isMultiSelectMode, lazyGridState, itemIds, selectedItems, onSelectionChange)
     ) {
         items(cachedComicList, key = { it.id }) { history ->
             val isSelected = selectedItems.contains(history.id)
@@ -124,16 +197,20 @@ fun NovelTabContent(
     selectedItems: Set<String>,
     onHistoryItemClick: (NovelHistory) -> Unit,
     onHistoryItemLongClick: (NovelHistory) -> Unit,
+    onSelectionChange: (Set<String>) -> Unit = {},
     lazyGridState: LazyGridState = rememberLazyGridState()
 ) {
     val cachedNovelList = remember(novelList.hashCode()) { novelList }
+    val itemIds = remember(cachedNovelList.hashCode()) { cachedNovelList.map { it.id } }
 
     LazyVerticalGrid(
         state = lazyGridState,
         columns = if (displayMode == DisplayMode.ListView) GridCells.Fixed(1)
                   else GridCells.Fixed(displayMode.columnCount),
         contentPadding = PaddingValues(6.dp),
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
+            .dragSelectModifier(isMultiSelectMode, lazyGridState, itemIds, selectedItems, onSelectionChange)
     ) {
         items(cachedNovelList, key = { it.id }) { history ->
             val isSelected = selectedItems.contains(history.id)
@@ -172,6 +249,7 @@ fun AudioTabContent(
     onHistoryItemLongClick: (AudioHistory) -> Unit,
     onAudioTrackClick: (AudioHistory, Int) -> Unit,
     onAudioTrackLongClick: (AudioHistory, Int) -> Unit,
+    onSelectionChange: (Set<String>) -> Unit = {},
     lazyGridState: LazyGridState = rememberLazyGridState()
 ) {
     val cachedAudioList = remember(audioList.hashCode()) { audioList }
@@ -195,13 +273,16 @@ fun AudioTabContent(
                 }
             }
         }
+        val itemIds = remember(tracksToShow.hashCode()) { tracksToShow.map { it.first.id } }
 
         LazyVerticalGrid(
             state = lazyGridState,
             columns = if (displayMode == DisplayMode.ListView) GridCells.Fixed(1)
                       else GridCells.Fixed(displayMode.columnCount),
             contentPadding = PaddingValues(6.dp),
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .dragSelectModifier(isMultiSelectMode, lazyGridState, itemIds, selectedItems, onSelectionChange)
         ) {
             items(tracksToShow, key = { "${it.first.id}_${it.second}" }) { (audio, trackIndex, track) ->
                 val singleTrackAudio = AudioHistory(
@@ -257,12 +338,16 @@ fun AudioTabContent(
         }
     } else {
         // 专辑模式
+        val itemIds = remember(cachedAudioList.hashCode()) { cachedAudioList.map { it.id } }
+
         LazyVerticalGrid(
             state = lazyGridState,
             columns = if (displayMode == DisplayMode.ListView) GridCells.Fixed(1)
                       else GridCells.Fixed(displayMode.columnCount),
             contentPadding = PaddingValues(6.dp),
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .dragSelectModifier(isMultiSelectMode, lazyGridState, itemIds, selectedItems, onSelectionChange)
         ) {
             items(cachedAudioList, key = { it.id }) { history ->
                 val isSelected = selectedItems.contains(history.id)

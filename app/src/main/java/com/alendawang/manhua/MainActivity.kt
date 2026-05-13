@@ -1762,6 +1762,9 @@ fun ComicApp(
                                     selectedItems + id
                                 }
                             },
+                            onSelectionChange = { newSelection ->
+                                selectedItems = newSelection
+                            },
                             isAudioPlaying = playbackState.isPlaying,
                             currentPlayingAudioId = playbackState.audioId,
                             currentPlayingTrackIndex = playbackState.trackIndex,
