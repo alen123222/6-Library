@@ -3,6 +3,7 @@ package com.alendawang.manhua.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.shape.CircleShape
@@ -26,6 +27,9 @@ import com.alendawang.manhua.model.DisplayMode
 import com.alendawang.manhua.model.NovelHistory
 import com.alendawang.manhua.ui.components.*
 import com.alendawang.manhua.ui.components.resolveItemIndexFromPosition
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+
 
 // ============================================================
 // 共享多选覆盖层 — 替代原先复制6次的多选指示器代码
@@ -75,7 +79,8 @@ fun BoxScope.MultiSelectOverlay(
 }
 
 // ============================================================
-// 拖拽多选的 Grid Modifier
+// 拖拽多选的 Grid Modifier（含边缘自动滚动）
+// 设计参考: github.com/jordond/drag-select-compose
 // ============================================================
 @Composable
 fun Modifier.dragSelectModifier(
@@ -87,61 +92,98 @@ fun Modifier.dragSelectModifier(
 ): Modifier {
     if (!isMultiSelectMode) return this
 
-    var isDragging by remember { mutableStateOf(false) }
-    var startIndex by remember { mutableIntStateOf(-1) }
-    var currentIndex by remember { mutableIntStateOf(-1) }
-    var isSelecting by remember { mutableStateOf(true) }
-    var initialSelection by remember { mutableStateOf(emptySet<String>()) }
+    // rememberUpdatedState 确保闭包读取最新值
+    val latestSelectedItems by rememberUpdatedState(selectedItems)
+    val latestOnSelectionChange by rememberUpdatedState(onSelectionChange)
+    val latestItemIds by rememberUpdatedState(itemIds)
 
-    return this.pointerInput(isMultiSelectMode, itemIds.size) {
+    // 自动滚动速度（由 onDrag 更新，由 LaunchedEffect 消费）
+    val autoScrollSpeed = remember { mutableStateOf(0f) }
+
+    // LaunchedEffect 在 Composable 层驱动自动滚动，完全独立于 pointerInput
+    // 这避免了在 pointerInput 内 launch 协程的各种限制（RestrictsSuspension 等）
+    LaunchedEffect(autoScrollSpeed.value) {
+        if (autoScrollSpeed.value == 0f) return@LaunchedEffect
+        while (isActive) {
+            gridState.scrollBy(autoScrollSpeed.value)
+            delay(10)
+        }
+    }
+
+    // 拖拽过程中的状态（用 remember 持久化，防止 recomposition 重置）
+    var dragStartIdx by remember { mutableIntStateOf(-1) }
+    var dragCurrentIdx by remember { mutableIntStateOf(-1) }
+    var dragInitialSelection by remember { mutableStateOf(emptySet<String>()) }
+    var dragIsSelecting by remember { mutableStateOf(true) }
+    var isDragging by remember { mutableStateOf(false) }
+
+    return this.pointerInput(isMultiSelectMode) {
+        val scrollThreshold = maxOf(size.height * 0.20f, 80f)
+
         detectDragGestures(
             onDragStart = { offset ->
-                val index = resolveItemIndexFromPosition(gridState, offset)
-                if (index >= 0 && index < itemIds.size) {
+                val idx = resolveItemIndexFromPosition(gridState, offset)
+                if (idx >= 0 && idx < latestItemIds.size) {
+                    dragStartIdx = idx
+                    dragCurrentIdx = idx
+                    dragInitialSelection = latestSelectedItems.toSet()
+                    dragIsSelecting = !latestSelectedItems.contains(latestItemIds[idx])
                     isDragging = true
-                    startIndex = index
-                    currentIndex = index
-                    initialSelection = selectedItems.toSet()
-                    isSelecting = !selectedItems.contains(itemIds[index])
-                    // 立即应用首个 item
-                    val draggedIds = setOf(itemIds[index])
-                    val newSelection = if (isSelecting) initialSelection + draggedIds else initialSelection - draggedIds
-                    onSelectionChange(newSelection)
-                }
-            },
-            onDrag = { change, _ ->
-                if (!isDragging) return@detectDragGestures
-                change.consume()
-                val index = resolveItemIndexFromPosition(gridState, change.position)
-                if (index >= 0 && index < itemIds.size && index != currentIndex) {
-                    currentIndex = index
-                    val rangeStart = minOf(startIndex, currentIndex)
-                    val rangeEnd = maxOf(startIndex, currentIndex)
-                    val draggedIds = (rangeStart..rangeEnd)
-                        .filter { it in itemIds.indices }
-                        .map { itemIds[it] }
-                        .toSet()
-                    val newSelection = if (isSelecting) initialSelection + draggedIds else initialSelection - draggedIds
-                    onSelectionChange(newSelection)
+                    // 立即选中/取消起点 item
+                    latestOnSelectionChange(
+                        if (dragIsSelecting) dragInitialSelection + latestItemIds[idx]
+                        else dragInitialSelection - latestItemIds[idx]
+                    )
+                } else {
+                    isDragging = false
                 }
             },
             onDragEnd = {
+                autoScrollSpeed.value = 0f
                 isDragging = false
-                startIndex = -1
-                currentIndex = -1
             },
             onDragCancel = {
+                autoScrollSpeed.value = 0f
                 isDragging = false
-                startIndex = -1
-                currentIndex = -1
+            },
+            onDrag = { change, _ ->
+                change.consume()
+                if (!isDragging) return@detectDragGestures
+
+                val pos = change.position
+
+                // 更新自动滚动速度
+                val distanceFromTop = pos.y
+                val distanceFromBottom = size.height - pos.y
+                autoScrollSpeed.value = when {
+                    distanceFromBottom < scrollThreshold -> scrollThreshold - distanceFromBottom
+                    distanceFromTop < scrollThreshold -> -(scrollThreshold - distanceFromTop)
+                    else -> 0f
+                }
+
+                // 更新选中范围
+                val idx = resolveItemIndexFromPosition(gridState, pos)
+                if (idx >= 0 && idx < latestItemIds.size && idx != dragCurrentIdx) {
+                    dragCurrentIdx = idx
+                    val start = dragStartIdx
+                    val rangeIds = (minOf(start, idx)..maxOf(start, idx))
+                        .filter { it in latestItemIds.indices }
+                        .map { latestItemIds[it] }.toSet()
+                    latestOnSelectionChange(
+                        if (dragIsSelecting) dragInitialSelection + rangeIds
+                        else dragInitialSelection - rangeIds
+                    )
+                }
             }
         )
     }
 }
 
+
 // ============================================================
 // 漫画 Tab 内容
 // ============================================================
+
 @Composable
 fun ComicTabContent(
     comicList: List<ComicHistory>,
